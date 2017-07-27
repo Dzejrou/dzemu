@@ -1,0 +1,6 @@
+[package]
+name = "dzemu"
+version = "0.1.0"
+authors = ["Dzejrou <dzejrou@gmail.com>"]
+
+[dependencies]
