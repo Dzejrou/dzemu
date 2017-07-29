@@ -1,6 +1,5 @@
 use cpus::Cpu;
 use mems::Memory;
-use regs::Registers;
 
 // Add memory to accumulator with carry.
 const OP_ADC_IMMEDIATE:   u8 = 0x69;
@@ -280,20 +279,15 @@ enum AddressMode {
     None
 }
 
-pub struct Mos6507<M: Memory, R: Registers> {
+pub struct Mos6507<M: Memory> {
     ram: M,
-    regs: R,
     pc: u16,
     addr_mode: AddressMode,
 }
 
-impl<M: Memory, R: Registers> Cpu<M, R> for Mos6507<M, R> {
+impl<M: Memory> Cpu<M> for Mos6507<M> {
     fn memory(&self) -> &M {
         &self.ram
-    }
-
-    fn registers(&self) -> &R {
-        &self.regs
     }
 
     fn run(&mut self, cart : &Memory) {
@@ -305,11 +299,10 @@ impl<M: Memory, R: Registers> Cpu<M, R> for Mos6507<M, R> {
     }
 }
 
-impl<M: Memory, R: Registers> Mos6507<M, R> {
-    pub fn new(ram: M, regs: R) -> Mos6507<M, R> {
+impl<M: Memory> Mos6507<M> {
+    pub fn new(ram: M) -> Mos6507<M> {
         Mos6507 {
             ram,
-            regs,
             pc: 0u16,
             addr_mode: AddressMode::None
         }
