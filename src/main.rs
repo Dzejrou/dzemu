@@ -4,7 +4,10 @@ use dzemu::util;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    // TODO: Assert argument count, possibly add options.
+
+    if args.len() < 2 {
+        panic!("rom file not provided");
+    }
 
     let rom_data = util::read_rom(&args[1]);
 
