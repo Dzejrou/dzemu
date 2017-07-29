@@ -32,10 +32,10 @@ impl<M: Memory, R: Registers> Cpu<M, R> for Mos6507<M, R> {
         &self.regs
     }
 
-    fn run(&mut self, rom : &Vec<u8>) {
+    fn run(&mut self, cart : &Memory) {
         // TODO: PC initial value.
         loop {
-            self.execute(rom);
+            self.execute(cart);
             self.pc += self.pc_offset();
         }
     }
@@ -51,21 +51,21 @@ impl<M: Memory, R: Registers> Mos6507<M, R> {
         }
     }
 
-    fn execute(&mut self, rom: &Vec<u8>) {
+    fn execute(&mut self, cart: &Memory) {
     
     }
 
     fn pc_offset(&self) -> u16 {
         match self.addr_mode {
             AddressMode::Absolute  |
-            Addressmode::AbsoluteX |
+            AddressMode::AbsoluteX |
             AddressMode::AbsoluteY => 3,
             AddressMode::None      => 1,
             _                      => 2,
         }
     }
 
-    fn get_addr_mode(&self, opcode: u8) {
-        0
+    fn get_addr_mode(&self, opcode: u8) -> AddressMode {
+        AddressMode::None
     }
 }
