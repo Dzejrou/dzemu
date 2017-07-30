@@ -611,6 +611,59 @@ impl<M: Memory> Mos6507<M> {
         }
     }
 
+    fn set_operand(&mut self, cart: &Memory, operand: u8) {
+        match self.addr_mode {
+            AddressMode::ZeroPage    => {
+                let addr = cart.read_u8(self.pc + 1) as usize;
+                self.ram.write_u8(addr, operand);
+            }
+
+            AddressMode::ZeroPageX   => {
+                let addr = cart.read_u8(self.pc + 1) as usize;
+                self.ram.write_u8(addr + self.idx_x as usize, operand);
+            }
+
+            AddressMode::ZeroPageY   => {
+                let addr = cart.read_u8(self.pc + 1) as usize;
+                self.ram.write_u8(addr + self.idx_y as usize, operand);
+            }
+
+            AddressMode::Absolute    => {
+                let addr = cart.read_u16(self.pc + 1) as usize;
+                self.ram.write_u8(addr, operand);
+            }
+
+            AddressMode::AbsoluteX   => {
+                let addr = cart.read_u16(self.pc + 1) as usize;
+                self.ram.write_u8(addr + self.idx_x as usize, operand);
+            }
+
+            AddressMode::AbsoluteY   => {
+                let addr = cart.read_u16(self.pc + 1) as usize;
+                self.ram.write_u8(addr + self.idx_y as usize, operand);
+            }
+
+            AddressMode::IndirectX   => {
+                let mut ptr = (cart.read_u8(self.pc + 1) + self.idx_x) as usize;
+                ptr = ptr % 0xFF;
+
+                let addr = self.ram.read_u16(ptr) as usize;
+                self.ram.write_u8(addr, operand);
+            }
+
+            AddressMode::IndirectY   => {
+                let mut addr = cart.read_u16(self.pc + 1) as usize;
+                addr += self.idx_y as usize;
+
+                self.ram.write_u8(addr, operand);
+            }
+
+            AddressMode::Accumulator => self.accu = operand,
+
+            _                        => ()
+        }
+    }
+
     fn pc_offset(&self) -> usize {
         match self.addr_mode {
             AddressMode::Absolute  |
@@ -784,11 +837,16 @@ impl<M: Memory> Mos6507<M> {
     }
 
     fn op_and(&mut self, operand: u8) {
-    
+        self.accu &= operand;
+
+        self.negative = (self.accu >> 7) == 1;
+        self.zero = self.accu == 0;
     }
 
     fn op_asl(&mut self, operand: u8) {
+        self.carry = (operand >> 7) == 1;
     
+        // TODO: Either accu or memory.
     }
 
     fn op_bcc(&mut self, operand: u8) {
