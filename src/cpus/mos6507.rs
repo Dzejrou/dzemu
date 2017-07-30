@@ -264,6 +264,9 @@ const OP_TXA_IMPLIED:     u8 = 0x8A;
 // Transfer index X to stack pointer.
 const OP_TXS_IMPLIED:     u8 = 0x9A;
 
+// Mask for testing of the 7th bit.
+const NEG_MASK:           u8 = 1 << 7;
+
 enum AddressMode {
     Immediate,
     ZeroPage,
@@ -362,7 +365,7 @@ impl<M: Memory> Mos6507<M> {
             OP_ASL_ZERO_PAGE   |
             OP_ASL_ZERO_PAGE_X |
             OP_ASL_ABSOLUTE    |
-            OP_ASL_ABSOLUTE_X  => self.op_asl(operand),
+            OP_ASL_ABSOLUTE_X  => self.op_asl(operand, cart),
 
             OP_BCC_RELATIVE    => self.op_bcc(operand),
 
@@ -415,9 +418,9 @@ impl<M: Memory> Mos6507<M> {
             OP_DEC_ABSOLUTE    |
             OP_DEC_ABSOLUTE_X  => self.op_dec(operand),
 
-            OP_DEX_IMPLIED     => self.op_dex(operand),
+            OP_DEX_IMPLIED     => self.op_dex(),
 
-            OP_DEY_IMPLIED     => self.op_dey(operand),
+            OP_DEY_IMPLIED     => self.op_dey(),
 
             OP_EOR_IMMEDIATE   |
             OP_EOR_ZERO_PAGE   |
@@ -431,16 +434,16 @@ impl<M: Memory> Mos6507<M> {
             OP_INC_ZERO_PAGE   |
             OP_INC_ZERO_PAGE_X |
             OP_INC_ABSOLUTE    |
-            OP_INC_ABSOLUTE_X  => self.op_inc(operand),
+            OP_INC_ABSOLUTE_X  => self.op_inc(operand, cart),
 
-            OP_INX_IMPLIED     => self.op_inx(operand),
+            OP_INX_IMPLIED     => self.op_inx(),
 
-            OP_INY_IMPLIED     => self.op_iny(operand),
+            OP_INY_IMPLIED     => self.op_iny(),
 
             OP_JMP_ABSOLUTE    |
             OP_JMP_INDIRECT    => self.op_jmp(operand),
 
-            OP_JSR_ABSOLUTE    => self.op_jsr(operand),
+            OP_JSR_ABSOLUTE    => self.op_jsr(cart),
 
             OP_LDA_IMMEDIATE   |
             OP_LDA_ZERO_PAGE   |
@@ -480,29 +483,29 @@ impl<M: Memory> Mos6507<M> {
             OP_ORA_INDIRECT_X  |
             OP_ORA_INDIRECT_Y  => self.op_ora(operand),
 
-            OP_PHA_IMPLIED     => self.op_pha(operand),
+            OP_PHA_IMPLIED     => self.op_pha(),
 
-            OP_PHP_IMPLIED     => self.op_php(operand),
+            OP_PHP_IMPLIED     => self.op_php(),
 
-            OP_PLA_IMPLIED     => self.op_pla(operand),
+            OP_PLA_IMPLIED     => self.op_pla(),
 
-            OP_PLP_IMPLIED     => self.op_plp(operand),
+            OP_PLP_IMPLIED     => self.op_plp(),
 
             OP_ROL_ACCUMULATOR |
             OP_ROL_ZERO_PAGE   |
             OP_ROL_ZERO_PAGE_X |
             OP_ROL_ABSOLUTE    |
-            OP_ROL_ABSOLUTE_X  => self.op_rol(operand),
+            OP_ROL_ABSOLUTE_X  => self.op_rol(operand, cart),
 
             OP_ROR_ACCUMULATOR |
             OP_ROR_ZERO_PAGE   |
             OP_ROR_ZERO_PAGE_X |
             OP_ROR_ABSOLUTE    |
-            OP_ROR_ABSOLUTE_X  => self.op_ror(operand),
+            OP_ROR_ABSOLUTE_X  => self.op_ror(operand, cart),
 
             OP_RTI_IMPLIED     => self.op_rti(operand),
 
-            OP_RTS_IMPLIED     => self.op_rts(operand),
+            OP_RTS_IMPLIED     => self.op_rts(),
 
             OP_SBC_IMMEDIATE   |
             OP_SBC_ZERO_PAGE   |
@@ -529,23 +532,23 @@ impl<M: Memory> Mos6507<M> {
 
             OP_STX_ZERO_PAGE   |
             OP_STX_ZERO_PAGE_Y |
-            OP_STX_ABSOLUTE    => self.op_stx(operand),
+            OP_STX_ABSOLUTE    => self.op_stx(cart),
 
             OP_STY_ZERO_PAGE   |
             OP_STY_ZERO_PAGE_X |
-            OP_STY_ABSOLUTE    => self.op_sty(operand),
+            OP_STY_ABSOLUTE    => self.op_sty(cart),
 
-            OP_TAX_IMPLIED     => self.op_tax(operand),
+            OP_TAX_IMPLIED     => self.op_tax(),
 
-            OP_TAY_IMPLIED     => self.op_tay(operand),
+            OP_TAY_IMPLIED     => self.op_tay(),
 
-            OP_TYA_IMPLIED     => self.op_tya(operand),
+            OP_TYA_IMPLIED     => self.op_tya(),
 
-            OP_TSX_IMPLIED     => self.op_tsx(operand),
+            OP_TSX_IMPLIED     => self.op_tsx(),
 
-            OP_TXA_IMPLIED     => self.op_txa(operand),
+            OP_TXA_IMPLIED     => self.op_txa(),
 
-            OP_TXS_IMPLIED     => self.op_txs(operand),
+            OP_TXS_IMPLIED     => self.op_txs(),
 
             op => panic!("Unknown opcode: {}", op)
         }
@@ -672,6 +675,10 @@ impl<M: Memory> Mos6507<M> {
             AddressMode::None      => 1,
             _                      => 2,
         }
+    }
+
+    fn get_sp(&self) -> usize {
+        (self.sp + 0x0100) as usize
     }
 
     fn get_addr_mode(&self, opcode: u8) -> AddressMode {
@@ -839,14 +846,19 @@ impl<M: Memory> Mos6507<M> {
     fn op_and(&mut self, operand: u8) {
         self.accu &= operand;
 
-        self.negative = (self.accu >> 7) == 1;
+        self.negative = (self.accu & NEG_MASK) > 0;
         self.zero = self.accu == 0;
     }
 
-    fn op_asl(&mut self, operand: u8) {
+    fn op_asl(&mut self, mut operand: u8, cart: &Memory) {
         self.carry = (operand >> 7) == 1;
+
+        operand <<= 1;
+
+        self.negative = (operand & NEG_MASK) > 0;
+        self.zero = operand == 0;
     
-        // TODO: Either accu or memory.
+        self.set_operand(cart, operand);
     }
 
     fn op_bcc(&mut self, operand: u8) {
@@ -878,7 +890,7 @@ impl<M: Memory> Mos6507<M> {
     }
 
     fn op_brk(&mut self, operand: u8) {
-        self.break_cmd = true;
+
     }
 
     fn op_bvc(&mut self, operand: u8) {
@@ -910,47 +922,74 @@ impl<M: Memory> Mos6507<M> {
     }
 
     fn op_cpx(&mut self, operand: u8) {
-    
+        self.carry = self.idx_x >= operand;
+        self.negative = self.idx_x < operand;;
+        self.zero = self.idx_x == operand;
     }
 
     fn op_cpy(&mut self, operand: u8) {
-    
+        self.carry = self.idx_y >= operand;
+        self.negative = self.idx_y < operand;;
+        self.zero = self.idx_y == operand;
     }
 
     fn op_dec(&mut self, operand: u8) {
     
     }
 
-    fn op_dex(&mut self, operand: u8) {
+    fn op_dex(&mut self) {
+        // TODO: Apparently, idx_x and idx_y are handled as signed.
+        self.idx_x -= 1;
     
+        self.negative = (self.idx_x & NEG_MASK) > 0;
+        self.zero = self.idx_x == 0;
     }
 
-    fn op_dey(&mut self, operand: u8) {
+    fn op_dey(&mut self) {
+        self.idx_y -= 1;
     
+        self.negative = (self.idx_y & NEG_MASK) > 0;
+        self.zero = self.idx_y == 0;
     }
 
     fn op_eor(&mut self, operand: u8) {
     
     }
 
-    fn op_inc(&mut self, operand: u8) {
+    fn op_inc(&mut self, operand: u8, cart: &Memory) {
     
     }
 
-    fn op_inx(&mut self, operand: u8) {
-    
+    fn op_inx(&mut self) {
+        self.idx_x += 1;
+
+        self.negative = (self.idx_x & NEG_MASK) > 0;
+        self.zero = self.idx_x == 0;
     }
 
-    fn op_iny(&mut self, operand: u8) {
-    
+    fn op_iny(&mut self) {
+        self.idx_y += 1;
+
+        self.negative = (self.idx_y & NEG_MASK) > 0;
+        self.zero = self.idx_y == 0;
     }
 
     fn op_jmp(&mut self, operand: u8) {
     
     }
 
-    fn op_jsr(&mut self, operand: u8) {
-    
+    fn op_jsr(&mut self, cart: &Memory) {
+        // TODO: PC is incremented after this!
+        let addr = cart.read_u16(self.pc + 1) as usize;
+
+        // Store pc.
+        // TODO: SP starts at 0x01FF, but atari2600
+        //       has only 128 bytes of memory?
+        let sp_addr = self.get_sp();
+        self.ram.write_u16(sp_addr, self.pc as u16);
+        self.sp -= 2;
+
+        self.pc = addr;
     }
 
     fn op_lda(&mut self, operand: u8) {
@@ -958,10 +997,17 @@ impl<M: Memory> Mos6507<M> {
     }
 
     fn op_ldx(&mut self, operand: u8) {
-    
+        self.idx_x = operand;
+
+        self.negative = (self.idx_x & NEG_MASK) > 0;
+        self.zero = self.idx_x == 0;
     }
 
     fn op_ldy(&mut self, operand: u8) {
+        self.idx_y = operand;
+
+        self.negative = (self.idx_y & NEG_MASK) > 0;
+        self.zero = self.idx_y == 0;
     
     }
 
@@ -977,36 +1023,108 @@ impl<M: Memory> Mos6507<M> {
     
     }
 
-    fn op_pha(&mut self, operand: u8) {
-    
+    fn op_pha(&mut self) {
+        let addr = self.get_sp();
+        self.ram.write_u8(addr, self.accu);
+        self.sp -= 1;
     }
 
-    fn op_php(&mut self, operand: u8) {
+    fn op_php(&mut self) {
+        // Note: We don't have the register so we
+        //       manually store the boolean flags.
+        // Problem: If any roms use this stored byte,
+        //          we might be in trouble as the ordering
+        //          is different.
+        let mut reg = 0u8;
+
+        if self.carry {
+            reg |= 1;
+        }
+
+        if self.negative {
+            reg |= 1 << 2;
+        }
+
+        if self.zero {
+            reg |= 1 << 3;
+        }
+
+        if self.decimal {
+            reg |= 1 << 4;
+        }
+
+        if self.break_cmd {
+            reg |= 1 << 5;
+        }
+
+        if self.interrupt_disable {
+            reg |= 1 << 6;
+        }
+
+        if self.overflow {
+            reg |= 1 << 7;
+        }
     
+        let addr = self.get_sp();
+        self.ram.write_u8(addr, reg);
+        self.sp -= 1;
     }
 
-    fn op_pla(&mut self, operand: u8) {
-    
+    fn op_pla(&mut self) {
+        self.sp += 1;
+        let addr = self.get_sp();
+        self.accu = self.ram.read_u8(addr);
     }
 
-    fn op_plp(&mut self, operand: u8) {
-    
+    fn op_plp(&mut self) {
+        self.sp += 1;
+        let addr = self.get_sp();
+        let reg = self.ram.read_u8(addr);
+
+        self.carry =             (reg & 1) > 0;
+        self.negative =          (reg & (1 << 2)) > 0;
+        self.zero =              (reg & (1 << 3)) > 0;
+        self.decimal =           (reg & (1 << 4)) > 0;
+        self.break_cmd =         (reg & (1 << 5)) > 0;
+        self.interrupt_disable = (reg & (1 << 6)) > 0;
+        self.overflow =          (reg & (1 << 7)) > 0;
     }
 
-    fn op_rol(&mut self, operand: u8) {
+    fn op_rol(&mut self, mut operand: u8, cart: &Memory) {
+        let input_carry = self.carry as u8;
+        self.carry = (operand >> 7) == 1;
+
+        operand <<= 1;
+        if self.carry {
+            operand |= input_carry;
+        }
+
+        self.negative = (operand >> 7) == 1;
+        self.zero = operand == 0;
     
+        self.set_operand(cart, operand);
     }
 
-    fn op_ror(&mut self, operand: u8) {
+    fn op_ror(&mut self, mut operand: u8, cart: &Memory) {
+        let input_carry = self.carry as u8;
+        self.carry = (operand & 1) == 1;
+
+        operand >>= 1;
+        operand |= input_carry << 7;
+
+        self.negative = (operand >> 7) == 1;
+        self.zero = operand == 0;
     
+        self.set_operand(cart, operand);
     }
 
     fn op_rti(&mut self, operand: u8) {
     
     }
 
-    fn op_rts(&mut self, operand: u8) {
-    
+    fn op_rts(&mut self) {
+        self.sp += 2;
+        self.pc = self.ram.read_u16(self.get_sp()) as usize;
     }
 
     fn op_sbc(&mut self, operand: u8) {
@@ -1030,35 +1148,52 @@ impl<M: Memory> Mos6507<M> {
     
     }
 
-    fn op_stx(&mut self, operand: u8) {
-    
+    fn op_stx(&mut self, cart: &Memory) {
+        let res = self.idx_x;
+        self.set_operand(cart, res);
     }
 
-    fn op_sty(&mut self, operand: u8) {
-    
+    fn op_sty(&mut self, cart: &Memory) {
+        let res = self.idx_y;
+        self.set_operand(cart, res);
     }
 
-    fn op_tax(&mut self, operand: u8) {
-    
+    fn op_tax(&mut self) {
+        self.idx_x = self.accu;
+
+        self.negative = (self.idx_x & NEG_MASK) > 0;
+        self.zero = self.idx_x == 0;
     }
 
-    fn op_tay(&mut self, operand: u8) {
-    
+    fn op_tay(&mut self) {
+        self.idx_y = self.accu;
+
+        self.negative = (self.idx_y & NEG_MASK) > 0;
+        self.zero = self.idx_y == 0;
     }
 
-    fn op_tya(&mut self, operand: u8) {
-    
+    fn op_tya(&mut self) {
+        self.accu = self.idx_y;
+
+        self.negative = (self.accu & NEG_MASK) > 0;
+        self.zero = self.accu == 0;
     }
 
-    fn op_tsx(&mut self, operand: u8) {
+    fn op_tsx(&mut self) {
+        self.idx_x = self.sp;
     
+        self.negative = (self.idx_x & NEG_MASK) > 0;
+        self.zero = self.idx_x == 0;
     }
 
-    fn op_txa(&mut self, operand: u8) {
-    
+    fn op_txa(&mut self) {
+        self.accu = self.idx_x;
+
+        self.negative = (self.accu & NEG_MASK) > 0;
+        self.zero = self.accu == 0;
     }
 
-    fn op_txs(&mut self, operand: u8) {
-    
+    fn op_txs(&mut self) {
+        self.sp = self.idx_x;
     }
 }
