@@ -281,7 +281,7 @@ enum AddressMode {
 
 pub struct Mos6507<M: Memory> {
     ram: M,
-    pc: u16,
+    pc: usize,
     sp: u8,
     idx_x: u8,
     idx_y: u8,
@@ -317,7 +317,7 @@ impl<M: Memory> Mos6507<M> {
     pub fn new(ram: M) -> Mos6507<M> {
         Mos6507 {
             ram,
-            pc: 0u16,
+            pc: 0,
             sp: 0u8,
             idx_x: 0u8,
             idx_y: 0u8,
@@ -337,7 +337,7 @@ impl<M: Memory> Mos6507<M> {
         // TODO: Get opcode, set addrmode, execute.
         let opcode = cart.read_u8(self.pc as usize);
         self.addr_mode = self.get_addr_mode(opcode);
-        let operand = self.get_operand();
+        let operand = self.get_operand(cart);
 
         match opcode {
             OP_ADC_IMMEDIATE   |
@@ -551,11 +551,67 @@ impl<M: Memory> Mos6507<M> {
         }
     }
 
-    fn get_operand(&self) -> u8 {
-        0
+    fn get_operand(&self, cart: &Memory) -> u8 {
+        // TODO: In relative, the offset can be negative!
+        match self.addr_mode {
+            AddressMode::Relative    |
+            AddressMode::Immediate   => {
+                cart.read_u8(self.pc + 1)
+            }
+
+            AddressMode::ZeroPage    => {
+                let addr = cart.read_u8(self.pc + 1) as usize;
+                self.ram.read_u8(addr)
+            }
+
+            AddressMode::ZeroPageX   => {
+                let addr = cart.read_u8(self.pc + 1) as usize;
+                self.ram.read_u8(addr + self.idx_x as usize)
+            }
+
+            AddressMode::ZeroPageY   => {
+                let addr = cart.read_u8(self.pc + 1) as usize;
+                self.ram.read_u8(addr + self.idx_y as usize)
+            }
+
+            AddressMode::Absolute    => {
+                let addr = cart.read_u16(self.pc + 1) as usize;
+                self.ram.read_u8(addr)
+            }
+
+            AddressMode::AbsoluteX   => {
+                let addr = cart.read_u16(self.pc + 1) as usize;
+                self.ram.read_u8(addr + self.idx_x as usize)
+            }
+
+            AddressMode::AbsoluteY   => {
+                let addr = cart.read_u16(self.pc + 1) as usize;
+                self.ram.read_u8(addr + self.idx_y as usize)
+            }
+
+            AddressMode::IndirectX   => {
+                let mut ptr = (cart.read_u8(self.pc + 1) + self.idx_x) as usize;
+                // TODO: Does it really wrap around zero page?
+                ptr = ptr % 0xFF;
+
+                let addr = self.ram.read_u16(ptr) as usize;
+                self.ram.read_u8(addr)
+            }
+
+            AddressMode::IndirectY   => {
+                let mut addr = cart.read_u16(self.pc + 1) as usize;
+                addr += self.idx_y as usize;
+
+                self.ram.read_u8(addr)
+            }
+
+            AddressMode::Accumulator => self.accu,
+
+            AddressMode::None        => 0
+        }
     }
 
-    fn pc_offset(&self) -> u16 {
+    fn pc_offset(&self) -> usize {
         match self.addr_mode {
             AddressMode::Absolute  |
             AddressMode::AbsoluteX |
