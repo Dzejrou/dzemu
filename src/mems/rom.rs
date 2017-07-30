@@ -5,7 +5,7 @@ pub struct Rom8b {
 }
 
 impl Memory for Rom8b {
-    fn write_u8(&mut self, _: u8) {
+    fn write_u8(&mut self, _: usize, _: u8) {
         panic!("Trying to overwrite read-only memory.");
     }
 
@@ -14,7 +14,7 @@ impl Memory for Rom8b {
     
     }
 
-    fn write_u16(&mut self, _: u16) {
+    fn write_u16(&mut self, _: usize, _: u16) {
         panic!("Trying to overwrite read-only memory.");
     }
 
