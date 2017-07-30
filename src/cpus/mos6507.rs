@@ -623,39 +623,39 @@ impl<M: Memory> Mos6507<M> {
 
     fn get_addr_mode(&self, opcode: u8) -> AddressMode {
         match opcode {
-            OP_ADC_IMMEDIATE |
-            OP_AND_IMMEDIATE |
-            OP_CMP_IMMEDIATE |
-            OP_CPX_IMMEDIATE |
-            OP_CPY_IMMEDIATE |
-            OP_EOR_IMMEDIATE |
-            OP_LDA_IMMEDIATE |
-            OP_LDX_IMMEDIATE |
-            OP_LDY_IMMEDIATE |
-            OP_ORA_IMMEDIATE |
-            OP_SBC_IMMEDIATE => AddressMode::Immediate,
+            OP_ADC_IMMEDIATE   |
+            OP_AND_IMMEDIATE   |
+            OP_CMP_IMMEDIATE   |
+            OP_CPX_IMMEDIATE   |
+            OP_CPY_IMMEDIATE   |
+            OP_EOR_IMMEDIATE   |
+            OP_LDA_IMMEDIATE   |
+            OP_LDX_IMMEDIATE   |
+            OP_LDY_IMMEDIATE   |
+            OP_ORA_IMMEDIATE   |
+            OP_SBC_IMMEDIATE   => AddressMode::Immediate,
 
-            OP_ADC_ZERO_PAGE |
-            OP_AND_ZERO_PAGE |
-            OP_ASL_ZERO_PAGE |
-            OP_BIT_ZERO_PAGE |
-            OP_CMP_ZERO_PAGE |
-            OP_CPX_ZERO_PAGE |
-            OP_CPY_ZERO_PAGE |
-            OP_DEC_ZERO_PAGE |
-            OP_EOR_ZERO_PAGE |
-            OP_INC_ZERO_PAGE |
-            OP_LDA_ZERO_PAGE |
-            OP_LDX_ZERO_PAGE |
-            OP_LDY_ZERO_PAGE |
-            OP_LSR_ZERO_PAGE |
-            OP_ORA_ZERO_PAGE |
-            OP_ROL_ZERO_PAGE |
-            OP_ROR_ZERO_PAGE |
-            OP_SBC_ZERO_PAGE |
-            OP_STA_ZERO_PAGE |
-            OP_STX_ZERO_PAGE |
-            OP_STY_ZERO_PAGE => AddressMode::ZeroPage,
+            OP_ADC_ZERO_PAGE   |
+            OP_AND_ZERO_PAGE   |
+            OP_ASL_ZERO_PAGE   |
+            OP_BIT_ZERO_PAGE   |
+            OP_CMP_ZERO_PAGE   |
+            OP_CPX_ZERO_PAGE   |
+            OP_CPY_ZERO_PAGE   |
+            OP_DEC_ZERO_PAGE   |
+            OP_EOR_ZERO_PAGE   |
+            OP_INC_ZERO_PAGE   |
+            OP_LDA_ZERO_PAGE   |
+            OP_LDX_ZERO_PAGE   |
+            OP_LDY_ZERO_PAGE   |
+            OP_LSR_ZERO_PAGE   |
+            OP_ORA_ZERO_PAGE   |
+            OP_ROL_ZERO_PAGE   |
+            OP_ROR_ZERO_PAGE   |
+            OP_SBC_ZERO_PAGE   |
+            OP_STA_ZERO_PAGE   |
+            OP_STX_ZERO_PAGE   |
+            OP_STY_ZERO_PAGE   => AddressMode::ZeroPage,
 
             OP_ADC_ZERO_PAGE_X |
             OP_AND_ZERO_PAGE_X |
@@ -677,81 +677,81 @@ impl<M: Memory> Mos6507<M> {
             OP_LDX_ZERO_PAGE_Y |
             OP_STX_ZERO_PAGE_Y => AddressMode::ZeroPageY,
 
-            OP_ADC_ABSOLUTE |
-            OP_AND_ABSOLUTE |
-            OP_ASL_ABSOLUTE |
-            OP_BIT_ABSOLUTE |
-            OP_CMP_ABSOLUTE |
-            OP_CPX_ABSOLUTE |
-            OP_CPY_ABSOLUTE |
-            OP_DEC_ABSOLUTE |
-            OP_EOR_ABSOLUTE |
-            OP_INC_ABSOLUTE |
-            OP_JMP_ABSOLUTE |
-            OP_JSR_ABSOLUTE |
-            OP_LDA_ABSOLUTE |
-            OP_LDX_ABSOLUTE |
-            OP_LDY_ABSOLUTE |
-            OP_LSR_ABSOLUTE |
-            OP_ORA_ABSOLUTE |
-            OP_ROL_ABSOLUTE |
-            OP_ROR_ABSOLUTE |
-            OP_SBC_ABSOLUTE |
-            OP_STA_ABSOLUTE |
-            OP_STX_ABSOLUTE |
-            OP_STY_ABSOLUTE => AddressMode::Absolute,
+            OP_ADC_ABSOLUTE    |
+            OP_AND_ABSOLUTE    |
+            OP_ASL_ABSOLUTE    |
+            OP_BIT_ABSOLUTE    |
+            OP_CMP_ABSOLUTE    |
+            OP_CPX_ABSOLUTE    |
+            OP_CPY_ABSOLUTE    |
+            OP_DEC_ABSOLUTE    |
+            OP_EOR_ABSOLUTE    |
+            OP_INC_ABSOLUTE    |
+            OP_JMP_ABSOLUTE    |
+            OP_JSR_ABSOLUTE    |
+            OP_LDA_ABSOLUTE    |
+            OP_LDX_ABSOLUTE    |
+            OP_LDY_ABSOLUTE    |
+            OP_LSR_ABSOLUTE    |
+            OP_ORA_ABSOLUTE    |
+            OP_ROL_ABSOLUTE    |
+            OP_ROR_ABSOLUTE    |
+            OP_SBC_ABSOLUTE    |
+            OP_STA_ABSOLUTE    |
+            OP_STX_ABSOLUTE    |
+            OP_STY_ABSOLUTE    => AddressMode::Absolute,
 
-            OP_ADC_ABSOLUTE_X |
-            OP_AND_ABSOLUTE_X |
-            OP_ASL_ABSOLUTE_X |
-            OP_CMP_ABSOLUTE_X |
-            OP_DEC_ABSOLUTE_X |
-            OP_EOR_ABSOLUTE_X |
-            OP_INC_ABSOLUTE_X |
-            OP_LDA_ABSOLUTE_X |
-            OP_LDY_ABSOLUTE_X |
-            OP_LSR_ABSOLUTE_X |
-            OP_ORA_ABSOLUTE_X |
-            OP_ROL_ABSOLUTE_X |
-            OP_ROR_ABSOLUTE_X |
-            OP_SBC_ABSOLUTE_X |
-            OP_STA_ABSOLUTE_X => AddressMode::AbsoluteX,
+            OP_ADC_ABSOLUTE_X  |
+            OP_AND_ABSOLUTE_X  |
+            OP_ASL_ABSOLUTE_X  |
+            OP_CMP_ABSOLUTE_X  |
+            OP_DEC_ABSOLUTE_X  |
+            OP_EOR_ABSOLUTE_X  |
+            OP_INC_ABSOLUTE_X  |
+            OP_LDA_ABSOLUTE_X  |
+            OP_LDY_ABSOLUTE_X  |
+            OP_LSR_ABSOLUTE_X  |
+            OP_ORA_ABSOLUTE_X  |
+            OP_ROL_ABSOLUTE_X  |
+            OP_ROR_ABSOLUTE_X  |
+            OP_SBC_ABSOLUTE_X  |
+            OP_STA_ABSOLUTE_X  => AddressMode::AbsoluteX,
 
-            OP_ADC_ABSOLUTE_Y |
-            OP_AND_ABSOLUTE_Y |
-            OP_CMP_ABSOLUTE_Y |
-            OP_EOR_ABSOLUTE_Y |
-            OP_LDA_ABSOLUTE_Y |
-            OP_LDX_ABSOLUTE_Y |
-            OP_ORA_ABSOLUTE_Y |
-            OP_SBC_ABSOLUTE_Y |
-            OP_STA_ABSOLUTE_Y => AddressMode::AbsoluteY,
+            OP_ADC_ABSOLUTE_Y  |
+            OP_AND_ABSOLUTE_Y  |
+            OP_CMP_ABSOLUTE_Y  |
+            OP_EOR_ABSOLUTE_Y  |
+            OP_LDA_ABSOLUTE_Y  |
+            OP_LDX_ABSOLUTE_Y  |
+            OP_ORA_ABSOLUTE_Y  |
+            OP_SBC_ABSOLUTE_Y  |
+            OP_STA_ABSOLUTE_Y  => AddressMode::AbsoluteY,
 
-            OP_ADC_INDIRECT_X |
-            OP_AND_INDIRECT_X |
-            OP_CMP_INDIRECT_X |
-            OP_EOR_INDIRECT_X |
-            OP_LDA_INDIRECT_X |
-            OP_ORA_INDIRECT_X |
-            OP_SBC_INDIRECT_X |
-            OP_STA_INDIRECT_X => AddressMode::IndirectX,
+            OP_ADC_INDIRECT_X  |
+            OP_AND_INDIRECT_X  |
+            OP_CMP_INDIRECT_X  |
+            OP_EOR_INDIRECT_X  |
+            OP_LDA_INDIRECT_X  |
+            OP_ORA_INDIRECT_X  |
+            OP_SBC_INDIRECT_X  |
+            OP_STA_INDIRECT_X  => AddressMode::IndirectX,
 
-            OP_ADC_INDIRECT_Y |
-            OP_AND_INDIRECT_Y |
-            OP_CMP_INDIRECT_Y |
-            OP_EOR_INDIRECT_Y |
-            OP_LDA_INDIRECT_Y |
-            OP_ORA_INDIRECT_Y |
-            OP_SBC_INDIRECT_Y |
-            OP_STA_INDIRECT_Y => AddressMode::IndirectY,
+            OP_ADC_INDIRECT_Y  |
+            OP_AND_INDIRECT_Y  |
+            OP_CMP_INDIRECT_Y  |
+            OP_EOR_INDIRECT_Y  |
+            OP_LDA_INDIRECT_Y  |
+            OP_ORA_INDIRECT_Y  |
+            OP_SBC_INDIRECT_Y  |
+            OP_STA_INDIRECT_Y  => AddressMode::IndirectY,
 
-            OP_BCC_RELATIVE |
-            OP_BCS_RELATIVE |
-            OP_BEQ_RELATIVE |
-            OP_BMI_RELATIVE |
-            OP_BNE_RELATIVE |
-            OP_BPL_RELATIVE |
-            OP_BVS_RELATIVE => AddressMode::Relative,
+            OP_BCC_RELATIVE    |
+            OP_BCS_RELATIVE    |
+            OP_BEQ_RELATIVE    |
+            OP_BMI_RELATIVE    |
+            OP_BNE_RELATIVE    |
+            OP_BPL_RELATIVE    |
+            OP_BVS_RELATIVE    => AddressMode::Relative,
 
             OP_ASL_ACCUMULATOR |
             OP_LSR_ACCUMULATOR |
