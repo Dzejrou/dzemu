@@ -416,7 +416,7 @@ impl<M: Memory> Mcs6507<M> {
             OP_DEC_ZERO_PAGE   |
             OP_DEC_ZERO_PAGE_X |
             OP_DEC_ABSOLUTE    |
-            OP_DEC_ABSOLUTE_X  => self.op_dec(operand),
+            OP_DEC_ABSOLUTE_X  => self.op_dec(operand, cart),
 
             OP_DEX_IMPLIED     => self.op_dex(),
 
@@ -528,7 +528,7 @@ impl<M: Memory> Mcs6507<M> {
             OP_STA_ABSOLUTE_X  |
             OP_STA_ABSOLUTE_Y  |
             OP_STA_INDIRECT_X  |
-            OP_STA_INDIRECT_Y  => self.op_sta(operand),
+            OP_STA_INDIRECT_Y  => self.op_sta(cart),
 
             OP_STX_ZERO_PAGE   |
             OP_STX_ZERO_PAGE_Y |
@@ -963,8 +963,12 @@ impl<M: Memory> Mcs6507<M> {
         self.zero = self.idx_y == operand;
     }
 
-    fn op_dec(&mut self, operand: u8) {
-    
+    fn op_dec(&mut self, mut operand: u8, cart: &Memory) {
+        operand += 1;
+        self.set_operand(cart, operand);
+
+        self.negative = (operand & NEG_MASK) > 0;
+        self.zero = operand == 0;
     }
 
     fn op_dex(&mut self) {
@@ -983,11 +987,18 @@ impl<M: Memory> Mcs6507<M> {
     }
 
     fn op_eor(&mut self, operand: u8) {
+        self.accu ^= operand;
     
+        self.negative = (self.accu & NEG_MASK) > 0;
+        self.zero = self.accu == 0;
     }
 
-    fn op_inc(&mut self, operand: u8, cart: &Memory) {
-    
+    fn op_inc(&mut self, mut operand: u8, cart: &Memory) {
+        operand += 1;
+        self.set_operand(cart, operand);
+
+        self.negative = (operand & NEG_MASK) > 0;
+        self.zero = operand == 0;
     }
 
     fn op_inx(&mut self) {
@@ -1036,7 +1047,10 @@ impl<M: Memory> Mcs6507<M> {
     }
 
     fn op_lda(&mut self, operand: u8) {
+        self.accu = operand;
     
+        self.negative = (self.accu & NEG_MASK) > 0;
+        self.zero = self.accu == 0;
     }
 
     fn op_ldx(&mut self, operand: u8) {
@@ -1063,7 +1077,10 @@ impl<M: Memory> Mcs6507<M> {
     }
 
     fn op_ora(&mut self, operand: u8) {
+        self.accu |= operand;
     
+        self.negative = (self.accu & NEG_MASK) > 0;
+        self.zero = self.accu == 0;
     }
 
     fn op_pha(&mut self) {
@@ -1171,7 +1188,21 @@ impl<M: Memory> Mcs6507<M> {
     }
 
     fn op_sbc(&mut self, operand: u8) {
-    
+        if self.decimal {
+            panic!("Decimal sbc mode not implemented!");
+        } else {
+            let mut res = self.accu as i16;
+            res -= operand as i16;
+            if !self.carry {
+                res -= 1i16;
+            }
+
+            self.carry = res >= 0;
+            self.overflow = (res < -127i16) || (res > 127i16);
+            self.negative = res < 0;
+
+            self.accu = (res & 0xFF) as u8;
+        }
     }
 
     fn op_sec(&mut self) {
@@ -1186,8 +1217,9 @@ impl<M: Memory> Mcs6507<M> {
         self.interrupt_disable = true;
     }
 
-    fn op_sta(&mut self, operand: u8) {
-    
+    fn op_sta(&mut self, cart: &Memory) {
+        let res = self.accu;
+        self.set_operand(cart, res);
     }
 
     fn op_stx(&mut self, cart: &Memory) {
