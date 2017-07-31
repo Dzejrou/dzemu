@@ -282,7 +282,7 @@ enum AddressMode {
     None
 }
 
-pub struct Mcs6507<M: Memory> {
+pub struct Mcs6502<M: Memory> {
     ram: M,
     pc: usize,
     sp: u8,
@@ -302,7 +302,7 @@ pub struct Mcs6507<M: Memory> {
     zero: bool
 }
 
-impl<M: Memory> Cpu<M> for Mcs6507<M> {
+impl<M: Memory> Cpu<M> for Mcs6502<M> {
     fn memory(&self) -> &M {
         &self.ram
     }
@@ -316,9 +316,9 @@ impl<M: Memory> Cpu<M> for Mcs6507<M> {
     }
 }
 
-impl<M: Memory> Mcs6507<M> {
-    pub fn new(ram: M) -> Mcs6507<M> {
-        Mcs6507 {
+impl<M: Memory> Mcs6502<M> {
+    pub fn new(ram: M) -> Mcs6502<M> {
+        Mcs6502 {
             ram,
             pc: 0,
             sp: 0u8,
