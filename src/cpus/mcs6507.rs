@@ -282,7 +282,7 @@ enum AddressMode {
     None
 }
 
-pub struct Mos6507<M: Memory> {
+pub struct Mcs6507<M: Memory> {
     ram: M,
     pc: usize,
     sp: u8,
@@ -302,7 +302,7 @@ pub struct Mos6507<M: Memory> {
     zero: bool
 }
 
-impl<M: Memory> Cpu<M> for Mos6507<M> {
+impl<M: Memory> Cpu<M> for Mcs6507<M> {
     fn memory(&self) -> &M {
         &self.ram
     }
@@ -316,9 +316,9 @@ impl<M: Memory> Cpu<M> for Mos6507<M> {
     }
 }
 
-impl<M: Memory> Mos6507<M> {
-    pub fn new(ram: M) -> Mos6507<M> {
-        Mos6507 {
+impl<M: Memory> Mcs6507<M> {
+    pub fn new(ram: M) -> Mcs6507<M> {
+        Mcs6507 {
             ram,
             pc: 0,
             sp: 0u8,
@@ -441,7 +441,7 @@ impl<M: Memory> Mos6507<M> {
             OP_INY_IMPLIED     => self.op_iny(),
 
             OP_JMP_ABSOLUTE    |
-            OP_JMP_INDIRECT    => self.op_jmp(operand),
+            OP_JMP_INDIRECT    => self.op_jmp(cart),
 
             OP_JSR_ABSOLUTE    => self.op_jsr(cart),
 
@@ -678,7 +678,7 @@ impl<M: Memory> Mos6507<M> {
     }
 
     fn get_sp(&self) -> usize {
-        (self.sp + 0x0100) as usize
+        (self.sp as u16 + 0x0100u16) as usize
     }
 
     fn get_addr_mode(&self, opcode: u8) -> AddressMode {
@@ -822,6 +822,20 @@ impl<M: Memory> Mos6507<M> {
         }
     }
 
+    fn branch(&mut self, cond: bool, offset: u8) {
+        if cond {
+            let soff = offset as i8;
+            let mut spc = self.pc as isize;
+            spc += soff as isize;
+
+            self.pc = spc as usize;
+        }
+    }
+
+    fn jump(&mut self, offset: u16) {
+        self.pc = offset as usize;
+    }
+
     fn op_adc(&mut self, operand: u8) {
         if self.decimal {
             panic!("Decimal addition not implemented yet!");
@@ -862,31 +876,41 @@ impl<M: Memory> Mos6507<M> {
     }
 
     fn op_bcc(&mut self, operand: u8) {
-    
+        let cond = !self.carry;
+        self.branch(cond, operand);
     }
 
     fn op_bcs(&mut self, operand: u8) {
-    
+        let cond = self.carry;
+        self.branch(cond, operand);
     }
 
     fn op_beq(&mut self, operand: u8) {
-    
+        let cond = self.zero;
+        self.branch(cond, operand);
     }
 
     fn op_bit(&mut self, operand: u8) {
-    
+        let res = self.accu & operand;
+
+        self.negative = (operand & NEG_MAS) > 0;
+        self.overflow = (operand & (1 << 6)) > 0;
+        self.zero = res == 0;
     }
 
     fn op_bmi(&mut self, operand: u8) {
-    
+        let cond = self.negative;
+        self.branch(cond, operand);
     }
 
     fn op_bne(&mut self, operand: u8) {
-    
+        let cond = !self.zero;
+        self.branch(cond, operand);
     }
 
     fn op_bpl(&mut self, operand: u8) {
-    
+        let cond = !self.negative;
+        self.branch(cond, operand);
     }
 
     fn op_brk(&mut self, operand: u8) {
@@ -894,11 +918,13 @@ impl<M: Memory> Mos6507<M> {
     }
 
     fn op_bvc(&mut self, operand: u8) {
-    
+        let cond = !self.overflow;
+        self.branch(cond, operand);
     }
 
     fn op_bvs(&mut self, operand: u8) {
-    
+        let cond = self.overflow;
+        self.branch(cond, operand);
     }
 
     fn op_clc(&mut self) {
@@ -918,7 +944,11 @@ impl<M: Memory> Mos6507<M> {
     }
 
     fn op_cmp(&mut self, operand: u8) {
-    
+        let res = (self.accu as i8) - (operand as i8);
+
+        self.carry = res >= 0;
+        self.negative = res < 0;
+        self.zero = res == 0;
     }
 
     fn op_cpx(&mut self, operand: u8) {
@@ -974,8 +1004,21 @@ impl<M: Memory> Mos6507<M> {
         self.zero = self.idx_y == 0;
     }
 
-    fn op_jmp(&mut self, operand: u8) {
-    
+    fn op_jmp(&mut self, cart: &Memory) {
+        match self.addr_mode {
+            AddressMode::Absolute => {
+                let addr = cart.read_u16(self.pc + 1);
+                self.jump(addr);
+            }
+
+            AddressMode::IndirectX => {
+                // TODO: Page 141.
+                // TODO: This is supposed to be just Indirect?
+                ()
+            }
+
+            _                     => ()
+        }
     }
 
     fn op_jsr(&mut self, cart: &Memory) {
@@ -1137,7 +1180,6 @@ impl<M: Memory> Mos6507<M> {
 
     fn op_sed(&mut self) {
         self.decimal = true;
-    
     }
 
     fn op_sei(&mut self) {
