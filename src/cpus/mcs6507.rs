@@ -893,7 +893,7 @@ impl<M: Memory> Mcs6507<M> {
     fn op_bit(&mut self, operand: u8) {
         let res = self.accu & operand;
 
-        self.negative = (operand & NEG_MAS) > 0;
+        self.negative = (operand & NEG_MASK) > 0;
         self.overflow = (operand & (1 << 6)) > 0;
         self.zero = res == 0;
     }
