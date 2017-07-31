@@ -337,7 +337,6 @@ impl<M: Memory> Mcs6507<M> {
     }
 
     fn execute(&mut self, cart: &Memory) {
-        // TODO: Get opcode, set addrmode, execute.
         let opcode = cart.read_u8(self.pc as usize);
         self.addr_mode = self.get_addr_mode(opcode);
         let operand = self.get_operand(cart);
@@ -555,7 +554,6 @@ impl<M: Memory> Mcs6507<M> {
     }
 
     fn get_operand(&self, cart: &Memory) -> u8 {
-        // TODO: In relative, the offset can be negative!
         match self.addr_mode {
             AddressMode::Relative    |
             AddressMode::Immediate   => {
