@@ -264,9 +264,6 @@ const OP_TXA_IMPLIED:     u8 = 0x8A;
 // Transfer index X to stack pointer.
 const OP_TXS_IMPLIED:     u8 = 0x9A;
 
-// Mask for testing of the 7th bit.
-const NEG_MASK:           u8 = 1 << 7;
-
 // Start of the interrupt vector.
 const INT_VECTOR_START:   usize = 0xFFFA;
 
@@ -280,6 +277,16 @@ const INT_NOMASK_ADDRESS: usize = 0xFFFA;
 // Address of the two byte address of
 // the initial PC value.
 const PC_INIT_ADDRESS:    usize = 0xFFFC;
+
+// Processor status register fields.
+// 5 is expansion bit.
+const STS_CAR_MASK:    u8 = 1 << 0;
+const STS_ZER_MASK:    u8 = 1 << 1;
+const STS_INT_MASK:    u8 = 1 << 2;
+const STS_DEC_MASK:    u8 = 1 << 3;
+const STS_BRK_MASK:    u8 = 1 << 4;
+const STS_OVF_MASK:    u8 = 1 << 6;
+const STS_NEG_MASK:    u8 = 1 << 7;
 
 enum AddressMode {
     Immediate,
@@ -304,16 +311,7 @@ pub struct Mcs6502<M: Memory> {
     idx_y: u8,
     accu: u8,
     addr_mode: AddressMode,
-
-    // These are supposed to be flags,
-    // but we have the memory.
-    carry: bool,
-    break_cmd: bool,
-    decimal: bool,
-    interrupt_disable: bool,
-    negative: bool,
-    overflow: bool,
-    zero: bool
+    status: u8
 }
 
 impl<M: Memory> Cpu<M> for Mcs6502<M> {
@@ -324,7 +322,7 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
     fn boot(&mut self, cart : &Memory) {
         // Last instruction of the init sequence of a rom
         // should be CLI.
-        self.interrupt_disable = true;
+        self.set_flag(true, STS_INT_MASK);
         self.pc = cart.read_u16(PC_INIT_ADDRESS) as usize;
     }
 
@@ -558,13 +556,7 @@ impl<M: Memory> Mcs6502<M> {
             idx_y: 0u8,
             accu: 0u8,
             addr_mode: AddressMode::None,
-            carry: false,
-            break_cmd: false,
-            decimal: false,
-            interrupt_disable: false,
-            negative: false,
-            overflow: false,
-            zero: false
+            status: 0u8
         }
     }
 
@@ -625,6 +617,18 @@ impl<M: Memory> Mcs6502<M> {
 
             AddressMode::None        => 0
         }
+    }
+
+    fn set_flag(&mut self, cond: bool, mask: u8) {
+        if cond {
+            self.status |= mask;
+        } else {
+            self.status &= !mask;
+        }
+    }
+
+    fn get_flag(&self, mask: u8) -> bool {
+        self.status & mask > 0
     }
 
     fn set_operand(&mut self, cart: &Memory, operand: u8) {
@@ -850,79 +854,81 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_adc(&mut self, operand: u8) {
-        if self.decimal {
+        if self.get_flag(STS_DEC_MASK) {
             panic!("Decimal addition not implemented yet!");
         } else {
             let mut result = self.accu.wrapping_add(operand);
-            result = result.wrapping_add(self.carry as u8);
+            let carry = self.get_flag(STS_CAR_MASK);
+            result = result.wrapping_add(carry as u8);
 
-            let mut check = (self.accu as u16) + (self.carry as u16);
+            let mut check = (self.accu as u16) + (carry as u16);
             check +=  operand as u16;
 
-            self.carry = check > 255;
+            self.set_flag(check > 255, STS_CAR_MASK);
 
             let signed = result as i16;
-            self.overflow = signed > 127 || signed < -128;
+            self.set_flag(signed > 127 || signed < -128, STS_OVF_MASK);
         }
 
         let result = self.accu;
-        self.zero = result == 0;
-        self.negative = (result as i8) < 0;
+        self.set_flag(result == 0, STS_ZER_MASK);
+        self.set_flag((result as i8) < 0, STS_ZER_MASK);
     }
 
     fn op_and(&mut self, operand: u8) {
         self.accu &= operand;
 
-        self.negative = (self.accu & NEG_MASK) > 0;
-        self.zero = self.accu == 0;
+        let accu = self.accu;
+        self.set_flag((accu & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(accu == 0, STS_ZER_MASK);
     }
 
     fn op_asl(&mut self, mut operand: u8, cart: &Memory) {
-        self.carry = (operand >> 7) == 1;
+        self.set_flag((operand >> 7) == 1, STS_CAR_MASK);
 
         operand <<= 1;
 
-        self.negative = (operand & NEG_MASK) > 0;
-        self.zero = operand == 0;
+        self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(operand == 0, STS_ZER_MASK);
     
         self.set_operand(cart, operand);
     }
 
     fn op_bcc(&mut self, operand: u8) {
-        let cond = !self.carry;
+        let cond = !self.get_flag(STS_CAR_MASK);
         self.branch(cond, operand);
     }
 
     fn op_bcs(&mut self, operand: u8) {
-        let cond = self.carry;
+        let cond = self.get_flag(STS_CAR_MASK);
         self.branch(cond, operand);
     }
 
     fn op_beq(&mut self, operand: u8) {
-        let cond = self.zero;
+        let cond = self.get_flag(STS_ZER_MASK);
         self.branch(cond, operand);
     }
 
     fn op_bit(&mut self, operand: u8) {
         let res = self.accu & operand;
 
-        self.negative = (operand & NEG_MASK) > 0;
-        self.overflow = (operand & (1 << 6)) > 0;
-        self.zero = res == 0;
+        self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag((operand & STS_OVF_MASK) > 0, STS_OVF_MASK);
+        self.set_flag(res == 0, STS_ZER_MASK);
     }
 
     fn op_bmi(&mut self, operand: u8) {
-        let cond = self.negative;
+        let cond = self.get_flag(STS_NEG_MASK);
         self.branch(cond, operand);
     }
 
     fn op_bne(&mut self, operand: u8) {
-        let cond = !self.zero;
+        let cond = !self.get_flag(STS_ZER_MASK);
         self.branch(cond, operand);
     }
 
     fn op_bpl(&mut self, operand: u8) {
-        let cond = !self.negative;
+        let cond = !self.get_flag(STS_NEG_MASK);
         self.branch(cond, operand);
     }
 
@@ -931,101 +937,107 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_bvc(&mut self, operand: u8) {
-        let cond = !self.overflow;
+        let cond = !self.get_flag(STS_OVF_MASK);
         self.branch(cond, operand);
     }
 
     fn op_bvs(&mut self, operand: u8) {
-        let cond = self.overflow;
+        let cond = self.get_flag(STS_OVF_MASK);
         self.branch(cond, operand);
     }
 
     fn op_clc(&mut self) {
-        self.carry = true;
+        self.set_flag(false, STS_CAR_MASK);
     }
 
     fn op_cld(&mut self) {
-        self.decimal = true;
+        self.set_flag(false, STS_DEC_MASK);
     }
 
     fn op_cli(&mut self) {
-        self.interrupt_disable = false;
+        self.set_flag(false, STS_INT_MASK);
     }
 
     fn op_clv(&mut self) {
-        self.overflow = false;
+        self.set_flag(false, STS_OVF_MASK);
     }
 
     fn op_cmp(&mut self, operand: u8) {
         let res = (self.accu as i8) - (operand as i8);
 
-        self.carry = res >= 0;
-        self.negative = res < 0;
-        self.zero = res == 0;
+        self.set_flag(res >= 0, STS_CAR_MASK);
+        self.set_flag(res < 0, STS_NEG_MASK);
+        self.set_flag(res == 0, STS_ZER_MASK);
     }
 
     fn op_cpx(&mut self, operand: u8) {
-        self.carry = self.idx_x >= operand;
-        self.negative = self.idx_x < operand;;
-        self.zero = self.idx_x == operand;
+        let idx_x = self.idx_x;
+        self.set_flag(idx_x >= operand, STS_CAR_MASK);
+        self.set_flag(idx_x < operand, STS_NEG_MASK);
+        self.set_flag(idx_x == operand, STS_ZER_MASK);
     }
 
     fn op_cpy(&mut self, operand: u8) {
-        self.carry = self.idx_y >= operand;
-        self.negative = self.idx_y < operand;;
-        self.zero = self.idx_y == operand;
+        let idx_y = self.idx_y;
+        self.set_flag(idx_y >= operand, STS_CAR_MASK);
+        self.set_flag(idx_y < operand, STS_NEG_MASK);
+        self.set_flag(idx_y == operand, STS_ZER_MASK);
     }
 
     fn op_dec(&mut self, mut operand: u8, cart: &Memory) {
         operand += 1;
         self.set_operand(cart, operand);
 
-        self.negative = (operand & NEG_MASK) > 0;
-        self.zero = operand == 0;
+        self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(operand == 0, STS_ZER_MASK);
     }
 
     fn op_dex(&mut self) {
-        // TODO: Apparently, idx_x and idx_y are handled as signed.
-        self.idx_x -= 1;
-    
-        self.negative = (self.idx_x & NEG_MASK) > 0;
-        self.zero = self.idx_x == 0;
+        self.idx_x = (self.idx_x as i8 - 1) as u8;
+
+        let idx_x = self.idx_x;
+        self.set_flag((idx_x & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(idx_x == 0, STS_ZER_MASK);
     }
 
     fn op_dey(&mut self) {
-        self.idx_y -= 1;
-    
-        self.negative = (self.idx_y & NEG_MASK) > 0;
-        self.zero = self.idx_y == 0;
+        self.idx_y = (self.idx_y as i8 - 1) as u8;
+
+        let idx_y = self.idx_y;
+        self.set_flag((idx_y & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(idx_y == 0, STS_ZER_MASK);
     }
 
     fn op_eor(&mut self, operand: u8) {
         self.accu ^= operand;
-    
-        self.negative = (self.accu & NEG_MASK) > 0;
-        self.zero = self.accu == 0;
+
+        let accu = self.accu;
+        self.set_flag((accu & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(accu == 0, STS_ZER_MASK);
     }
 
     fn op_inc(&mut self, mut operand: u8, cart: &Memory) {
         operand += 1;
         self.set_operand(cart, operand);
 
-        self.negative = (operand & NEG_MASK) > 0;
-        self.zero = operand == 0;
+        self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(operand == 0, STS_ZER_MASK);
     }
 
     fn op_inx(&mut self) {
         self.idx_x += 1;
 
-        self.negative = (self.idx_x & NEG_MASK) > 0;
-        self.zero = self.idx_x == 0;
+        let idx_x = self.idx_x;
+        self.set_flag((idx_x & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(idx_x == 0, STS_ZER_MASK);
     }
 
     fn op_iny(&mut self) {
         self.idx_y += 1;
 
-        self.negative = (self.idx_y & NEG_MASK) > 0;
-        self.zero = self.idx_y == 0;
+        let idx_y = self.idx_y;
+        self.set_flag((idx_y & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(idx_y == 0, STS_ZER_MASK);
     }
 
     fn op_jmp(&mut self, cart: &Memory) {
@@ -1061,28 +1073,30 @@ impl<M: Memory> Mcs6502<M> {
 
     fn op_lda(&mut self, operand: u8) {
         self.accu = operand;
-    
-        self.negative = (self.accu & NEG_MASK) > 0;
-        self.zero = self.accu == 0;
+
+        let accu = self.accu;
+        self.set_flag((accu & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(accu == 0, STS_ZER_MASK);
     }
 
     fn op_ldx(&mut self, operand: u8) {
         self.idx_x = operand;
 
-        self.negative = (self.idx_x & NEG_MASK) > 0;
-        self.zero = self.idx_x == 0;
+        let idx_x = self.idx_x;
+        self.set_flag((idx_x & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(idx_x == 0, STS_ZER_MASK);
     }
 
     fn op_ldy(&mut self, operand: u8) {
         self.idx_y = operand;
 
-        self.negative = (self.idx_y & NEG_MASK) > 0;
-        self.zero = self.idx_y == 0;
-    
+        let idx_y = self.idx_y;
+        self.set_flag((idx_y & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(idx_y == 0, STS_ZER_MASK);
     }
 
     fn op_lsr(&mut self, operand: u8) {
-    
+        // TODO: !
     }
 
     fn op_nop(&mut self) {
@@ -1091,9 +1105,10 @@ impl<M: Memory> Mcs6502<M> {
 
     fn op_ora(&mut self, operand: u8) {
         self.accu |= operand;
-    
-        self.negative = (self.accu & NEG_MASK) > 0;
-        self.zero = self.accu == 0;
+
+        let accu = self.accu;
+        self.set_flag((accu & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(accu == 0, STS_ZER_MASK);
     }
 
     fn op_pha(&mut self) {
@@ -1103,43 +1118,8 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_php(&mut self) {
-        // Note: We don't have the register so we
-        //       manually store the boolean flags.
-        // Problem: If any roms use this stored byte,
-        //          we might be in trouble as the ordering
-        //          is different.
-        let mut reg = 0u8;
-
-        if self.carry {
-            reg |= 1;
-        }
-
-        if self.negative {
-            reg |= 1 << 2;
-        }
-
-        if self.zero {
-            reg |= 1 << 3;
-        }
-
-        if self.decimal {
-            reg |= 1 << 4;
-        }
-
-        if self.break_cmd {
-            reg |= 1 << 5;
-        }
-
-        if self.interrupt_disable {
-            reg |= 1 << 6;
-        }
-
-        if self.overflow {
-            reg |= 1 << 7;
-        }
-    
         let addr = self.get_sp();
-        self.ram.write_u8(addr, reg);
+        self.ram.write_u8(addr, self.status);
         self.sp -= 1;
     }
 
@@ -1152,42 +1132,34 @@ impl<M: Memory> Mcs6502<M> {
     fn op_plp(&mut self) {
         self.sp += 1;
         let addr = self.get_sp();
-        let reg = self.ram.read_u8(addr);
-
-        self.carry =             (reg & 1) > 0;
-        self.negative =          (reg & (1 << 2)) > 0;
-        self.zero =              (reg & (1 << 3)) > 0;
-        self.decimal =           (reg & (1 << 4)) > 0;
-        self.break_cmd =         (reg & (1 << 5)) > 0;
-        self.interrupt_disable = (reg & (1 << 6)) > 0;
-        self.overflow =          (reg & (1 << 7)) > 0;
+        self.status = self.ram.read_u8(addr);
     }
 
     fn op_rol(&mut self, mut operand: u8, cart: &Memory) {
-        let input_carry = self.carry as u8;
-        self.carry = (operand >> 7) == 1;
+        let input_carry = self.get_flag(STS_CAR_MASK) as u8;
+        self.set_flag((operand >> 7) == 1, STS_CAR_MASK);
 
         operand <<= 1;
-        if self.carry {
+        if self.get_flag(STS_CAR_MASK) {
             operand |= input_carry;
         }
 
-        self.negative = (operand >> 7) == 1;
-        self.zero = operand == 0;
+        self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(operand == 0, STS_ZER_MASK);
     
         self.set_operand(cart, operand);
     }
 
     fn op_ror(&mut self, mut operand: u8, cart: &Memory) {
-        let input_carry = self.carry as u8;
-        self.carry = (operand & 1) == 1;
+        let input_carry = self.get_flag(STS_CAR_MASK) as u8;
+        self.set_flag((operand & 1) == 1, STS_CAR_MASK);
 
         operand >>= 1;
         operand |= input_carry << 7;
 
-        self.negative = (operand >> 7) == 1;
-        self.zero = operand == 0;
-    
+        self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(operand == 0, STS_ZER_MASK);
+
         self.set_operand(cart, operand);
     }
 
@@ -1202,33 +1174,33 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_sbc(&mut self, operand: u8) {
-        if self.decimal {
+        if self.get_flag(STS_DEC_MASK) {
             panic!("Decimal sbc mode not implemented!");
         } else {
             let mut res = self.accu as i16;
             res -= operand as i16;
-            if !self.carry {
+            if !self.get_flag(STS_CAR_MASK) {
                 res -= 1i16;
             }
 
-            self.carry = res >= 0;
-            self.overflow = (res < -127i16) || (res > 127i16);
-            self.negative = res < 0;
+            self.set_flag(res >= 0, STS_CAR_MASK);
+            self.set_flag(res < -127i16 || res > 127i16, STS_OVF_MASK);
+            self.set_flag(res < 0, STS_NEG_MASK);
 
             self.accu = (res & 0xFF) as u8;
         }
     }
 
     fn op_sec(&mut self) {
-        self.carry = true;
+        self.set_flag(true, STS_CAR_MASK);
     }
 
     fn op_sed(&mut self) {
-        self.decimal = true;
+        self.set_flag(true, STS_DEC_MASK);
     }
 
     fn op_sei(&mut self) {
-        self.interrupt_disable = true;
+        self.set_flag(true, STS_INT_MASK);
     }
 
     fn op_sta(&mut self, cart: &Memory) {
@@ -1249,39 +1221,45 @@ impl<M: Memory> Mcs6502<M> {
     fn op_tax(&mut self) {
         self.idx_x = self.accu;
 
-        self.negative = (self.idx_x & NEG_MASK) > 0;
-        self.zero = self.idx_x == 0;
+        let idx_x = self.idx_x;
+        self.set_flag((idx_x & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(idx_x == 0, STS_ZER_MASK);
     }
 
     fn op_tay(&mut self) {
         self.idx_y = self.accu;
 
-        self.negative = (self.idx_y & NEG_MASK) > 0;
-        self.zero = self.idx_y == 0;
+        let idx_y = self.idx_y;
+        self.set_flag((idx_y & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(idx_y == 0, STS_ZER_MASK);
     }
 
     fn op_tya(&mut self) {
         self.accu = self.idx_y;
 
-        self.negative = (self.accu & NEG_MASK) > 0;
-        self.zero = self.accu == 0;
+        let accu = self.accu;
+        self.set_flag((accu & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(accu == 0, STS_ZER_MASK);
     }
 
     fn op_tsx(&mut self) {
         self.idx_x = self.sp;
-    
-        self.negative = (self.idx_x & NEG_MASK) > 0;
-        self.zero = self.idx_x == 0;
+
+        let idx_x = self.idx_x;
+        self.set_flag((idx_x & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(idx_x == 0, STS_ZER_MASK);
     }
 
     fn op_txa(&mut self) {
         self.accu = self.idx_x;
 
-        self.negative = (self.accu & NEG_MASK) > 0;
-        self.zero = self.accu == 0;
+        let accu = self.accu;
+        self.set_flag((accu & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(accu == 0, STS_ZER_MASK);
     }
 
     fn op_txs(&mut self) {
+        // TODO: Set flags here too?
         self.sp = self.idx_x;
     }
 }
