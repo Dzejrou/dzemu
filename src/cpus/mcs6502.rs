@@ -267,6 +267,13 @@ const OP_TXS_IMPLIED:     u8 = 0x9A;
 // Mask for testing of the 7th bit.
 const NEG_MASK:           u8 = 1 << 7;
 
+// Start of the interrupt vector.
+const INT_VECTOR_START:   u8 = 0xFFFA;
+
+// Address of the two byte address of
+// the initial PC value.
+const PC_INIT_ADDRESS:    u8 = 0xFFFC;
+
 enum AddressMode {
     Immediate,
     ZeroPage,
@@ -307,33 +314,8 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
         &self.ram
     }
 
-    fn run(&mut self, cart : &Memory) {
-        // TODO: PC initial value.
-        loop {
-            self.execute(cart);
-            self.pc += self.pc_offset();
-        }
-    }
-}
-
-impl<M: Memory> Mcs6502<M> {
-    pub fn new(ram: M) -> Mcs6502<M> {
-        Mcs6502 {
-            ram,
-            pc: 0,
-            sp: 0u8,
-            idx_x: 0u8,
-            idx_y: 0u8,
-            accu: 0u8,
-            addr_mode: AddressMode::None,
-            carry: false,
-            break_cmd: false,
-            decimal: false,
-            interrupt_disable: false,
-            negative: false,
-            overflow: false,
-            zero: false
-        }
+    fn boot(&mut self, cart : &Memory) {
+        self.pc = cart.read_u16(PC_INIT_ADDRESS);
     }
 
     fn execute(&mut self, cart: &Memory) {
@@ -550,6 +532,29 @@ impl<M: Memory> Mcs6502<M> {
             OP_TXS_IMPLIED     => self.op_txs(),
 
             op => panic!("Unknown opcode: {}", op)
+        }
+
+        self.pc += self.pc_offset();
+    }
+}
+
+impl<M: Memory> Mcs6502<M> {
+    pub fn new(ram: M) -> Mcs6502<M> {
+        Mcs6502 {
+            ram,
+            pc: 0,
+            sp: 0u8,
+            idx_x: 0u8,
+            idx_y: 0u8,
+            accu: 0u8,
+            addr_mode: AddressMode::None,
+            carry: false,
+            break_cmd: false,
+            decimal: false,
+            interrupt_disable: false,
+            negative: false,
+            overflow: false,
+            zero: false
         }
     }
 
@@ -830,8 +835,8 @@ impl<M: Memory> Mcs6502<M> {
         }
     }
 
-    fn jump(&mut self, offset: u16) {
-        self.pc = offset as usize;
+    fn jump(&mut self, addr: u16) {
+        self.pc = addr as usize;
     }
 
     fn op_adc(&mut self, operand: u8) {
