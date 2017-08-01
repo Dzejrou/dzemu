@@ -1,7 +1,8 @@
 use mems::Memory;
 
 pub struct Rom8b {
-    data: Vec<u8>
+    data: Vec<u8>,
+    size: usize
 }
 
 impl Memory for Rom8b {
@@ -24,12 +25,19 @@ impl Memory for Rom8b {
     
         ((hi << 8) | lo)
     }
+
+    fn size(&self) -> usize {
+        self.size
+    }
 }
 
 impl Rom8b {
     pub fn from_vec(vec: Vec<u8>) -> Rom8b {
+        let size = vec.len();
+
         Rom8b {
-            data: vec
+            data: vec,
+            size: size
         }
     }
 }
