@@ -268,11 +268,18 @@ const OP_TXS_IMPLIED:     u8 = 0x9A;
 const NEG_MASK:           u8 = 1 << 7;
 
 // Start of the interrupt vector.
-const INT_VECTOR_START:   u8 = 0xFFFA;
+const INT_VECTOR_START:   usize = 0xFFFA;
+
+// Interrupt request handler address.
+const INT_REQ_ADDRESS:    usize = 0xFFFE;
+
+// Non-maskable interrupt request
+// handler address.
+const INT_NOMASK_ADDRESS: usize = 0xFFFA;
 
 // Address of the two byte address of
 // the initial PC value.
-const PC_INIT_ADDRESS:    u8 = 0xFFFC;
+const PC_INIT_ADDRESS:    usize = 0xFFFC;
 
 enum AddressMode {
     Immediate,
@@ -315,7 +322,10 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
     }
 
     fn boot(&mut self, cart : &Memory) {
-        self.pc = cart.read_u16(PC_INIT_ADDRESS);
+        // Last instruction of the init sequence of a rom
+        // should be CLI.
+        self.interrupt_disable = true;
+        self.pc = cart.read_u16(PC_INIT_ADDRESS) as usize;
     }
 
     fn execute(&mut self, cart: &Memory) {
@@ -484,7 +494,7 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
             OP_ROR_ABSOLUTE    |
             OP_ROR_ABSOLUTE_X  => self.op_ror(operand, cart),
 
-            OP_RTI_IMPLIED     => self.op_rti(operand),
+            OP_RTI_IMPLIED     => self.op_rti(),
 
             OP_RTS_IMPLIED     => self.op_rts(),
 
@@ -1181,8 +1191,9 @@ impl<M: Memory> Mcs6502<M> {
         self.set_operand(cart, operand);
     }
 
-    fn op_rti(&mut self, operand: u8) {
-    
+    fn op_rti(&mut self) {
+        self.op_plp();
+        self.op_rts();
     }
 
     fn op_rts(&mut self) {
