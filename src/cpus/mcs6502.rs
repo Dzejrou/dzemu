@@ -278,6 +278,10 @@ const INT_NOMASK_ADDRESS: usize = 0xFFFA;
 // the initial PC value.
 const PC_INIT_ADDRESS:    usize = 0xFFFC;
 
+// Starting address of the block of memory
+// where the rom gets mapped.
+const ROM_MAP_ADDRESS:    usize = 0x0000;
+
 // Processor status register fields.
 // 5 is expansion bit.
 const STS_CAR_MASK:    u8 = 1 << 0;
@@ -288,6 +292,7 @@ const STS_BRK_MASK:    u8 = 1 << 4;
 const STS_OVF_MASK:    u8 = 1 << 6;
 const STS_NEG_MASK:    u8 = 1 << 7;
 
+#[derive(Debug, PartialEq)]
 enum AddressMode {
     Immediate,
     ZeroPage,
@@ -323,13 +328,19 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
         // Last instruction of the init sequence of a rom
         // should be CLI.
         self.set_flag(true, STS_INT_MASK);
-        self.pc = cart.read_u16(PC_INIT_ADDRESS) as usize;
+        self.pc = self.ram.read_u16(PC_INIT_ADDRESS) as usize;
+        // TODO: Map cart to ram.
+        let mut addr: usize = ROM_MAP_ADDRESS;
+        for i in 0..cart.size() {
+            self.ram.write_u8(addr, cart.read_u8(i));
+            addr += 1;
+        }
     }
 
-    fn execute(&mut self, cart: &Memory) {
-        let opcode = cart.read_u8(self.pc as usize);
+    fn execute(&mut self) {
+        let opcode = self.ram.read_u8(self.pc as usize);
         self.addr_mode = self.get_addr_mode(opcode);
-        let operand = self.get_operand(cart);
+        let operand = self.get_operand();
 
         match opcode {
             OP_ADC_IMMEDIATE   |
@@ -354,7 +365,7 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
             OP_ASL_ZERO_PAGE   |
             OP_ASL_ZERO_PAGE_X |
             OP_ASL_ABSOLUTE    |
-            OP_ASL_ABSOLUTE_X  => self.op_asl(operand, cart),
+            OP_ASL_ABSOLUTE_X  => self.op_asl(operand),
 
             OP_BCC_RELATIVE    => self.op_bcc(operand),
 
@@ -405,7 +416,7 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
             OP_DEC_ZERO_PAGE   |
             OP_DEC_ZERO_PAGE_X |
             OP_DEC_ABSOLUTE    |
-            OP_DEC_ABSOLUTE_X  => self.op_dec(operand, cart),
+            OP_DEC_ABSOLUTE_X  => self.op_dec(operand),
 
             OP_DEX_IMPLIED     => self.op_dex(),
 
@@ -423,16 +434,16 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
             OP_INC_ZERO_PAGE   |
             OP_INC_ZERO_PAGE_X |
             OP_INC_ABSOLUTE    |
-            OP_INC_ABSOLUTE_X  => self.op_inc(operand, cart),
+            OP_INC_ABSOLUTE_X  => self.op_inc(operand),
 
             OP_INX_IMPLIED     => self.op_inx(),
 
             OP_INY_IMPLIED     => self.op_iny(),
 
             OP_JMP_ABSOLUTE    |
-            OP_JMP_INDIRECT    => self.op_jmp(cart),
+            OP_JMP_INDIRECT    => self.op_jmp(),
 
-            OP_JSR_ABSOLUTE    => self.op_jsr(cart),
+            OP_JSR_ABSOLUTE    => self.op_jsr(),
 
             OP_LDA_IMMEDIATE   |
             OP_LDA_ZERO_PAGE   |
@@ -484,13 +495,13 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
             OP_ROL_ZERO_PAGE   |
             OP_ROL_ZERO_PAGE_X |
             OP_ROL_ABSOLUTE    |
-            OP_ROL_ABSOLUTE_X  => self.op_rol(operand, cart),
+            OP_ROL_ABSOLUTE_X  => self.op_rol(operand),
 
             OP_ROR_ACCUMULATOR |
             OP_ROR_ZERO_PAGE   |
             OP_ROR_ZERO_PAGE_X |
             OP_ROR_ABSOLUTE    |
-            OP_ROR_ABSOLUTE_X  => self.op_ror(operand, cart),
+            OP_ROR_ABSOLUTE_X  => self.op_ror(operand),
 
             OP_RTI_IMPLIED     => self.op_rti(),
 
@@ -517,15 +528,15 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
             OP_STA_ABSOLUTE_X  |
             OP_STA_ABSOLUTE_Y  |
             OP_STA_INDIRECT_X  |
-            OP_STA_INDIRECT_Y  => self.op_sta(cart),
+            OP_STA_INDIRECT_Y  => self.op_sta(),
 
             OP_STX_ZERO_PAGE   |
             OP_STX_ZERO_PAGE_Y |
-            OP_STX_ABSOLUTE    => self.op_stx(cart),
+            OP_STX_ABSOLUTE    => self.op_stx(),
 
             OP_STY_ZERO_PAGE   |
             OP_STY_ZERO_PAGE_X |
-            OP_STY_ABSOLUTE    => self.op_sty(cart),
+            OP_STY_ABSOLUTE    => self.op_sty(),
 
             OP_TAX_IMPLIED     => self.op_tax(),
 
@@ -560,45 +571,45 @@ impl<M: Memory> Mcs6502<M> {
         }
     }
 
-    fn get_operand(&self, cart: &Memory) -> u8 {
+    fn get_operand(&self) -> u8 {
         match self.addr_mode {
             AddressMode::Relative    |
             AddressMode::Immediate   => {
-                cart.read_u8(self.pc + 1)
+                self.ram.read_u8(self.pc + 1)
             }
 
             AddressMode::ZeroPage    => {
-                let addr = cart.read_u8(self.pc + 1) as usize;
+                let addr = self.ram.read_u8(self.pc + 1) as usize;
                 self.ram.read_u8(addr)
             }
 
             AddressMode::ZeroPageX   => {
-                let addr = cart.read_u8(self.pc + 1) as usize;
+                let addr = self.ram.read_u8(self.pc + 1) as usize;
                 self.ram.read_u8(addr + self.idx_x as usize)
             }
 
             AddressMode::ZeroPageY   => {
-                let addr = cart.read_u8(self.pc + 1) as usize;
+                let addr = self.ram.read_u8(self.pc + 1) as usize;
                 self.ram.read_u8(addr + self.idx_y as usize)
             }
 
             AddressMode::Absolute    => {
-                let addr = cart.read_u16(self.pc + 1) as usize;
+                let addr = self.ram.read_u16(self.pc + 1) as usize;
                 self.ram.read_u8(addr)
             }
 
             AddressMode::AbsoluteX   => {
-                let addr = cart.read_u16(self.pc + 1) as usize;
+                let addr = self.ram.read_u16(self.pc + 1) as usize;
                 self.ram.read_u8(addr + self.idx_x as usize)
             }
 
             AddressMode::AbsoluteY   => {
-                let addr = cart.read_u16(self.pc + 1) as usize;
+                let addr = self.ram.read_u16(self.pc + 1) as usize;
                 self.ram.read_u8(addr + self.idx_y as usize)
             }
 
             AddressMode::IndirectX   => {
-                let mut ptr = (cart.read_u8(self.pc + 1) + self.idx_x) as usize;
+                let mut ptr = (self.ram.read_u8(self.pc + 1) + self.idx_x) as usize;
                 // TODO: Does it really wrap around zero page?
                 ptr = ptr % 0xFF;
 
@@ -607,7 +618,7 @@ impl<M: Memory> Mcs6502<M> {
             }
 
             AddressMode::IndirectY   => {
-                let mut addr = cart.read_u16(self.pc + 1) as usize;
+                let mut addr = self.ram.read_u16(self.pc + 1) as usize;
                 addr += self.idx_y as usize;
 
                 self.ram.read_u8(addr)
@@ -631,40 +642,40 @@ impl<M: Memory> Mcs6502<M> {
         self.status & mask > 0
     }
 
-    fn set_operand(&mut self, cart: &Memory, operand: u8) {
+    fn set_operand(&mut self, operand: u8) {
         match self.addr_mode {
             AddressMode::ZeroPage    => {
-                let addr = cart.read_u8(self.pc + 1) as usize;
+                let addr = self.ram.read_u8(self.pc + 1) as usize;
                 self.ram.write_u8(addr, operand);
             }
 
             AddressMode::ZeroPageX   => {
-                let addr = cart.read_u8(self.pc + 1) as usize;
+                let addr = self.ram.read_u8(self.pc + 1) as usize;
                 self.ram.write_u8(addr + self.idx_x as usize, operand);
             }
 
             AddressMode::ZeroPageY   => {
-                let addr = cart.read_u8(self.pc + 1) as usize;
+                let addr = self.ram.read_u8(self.pc + 1) as usize;
                 self.ram.write_u8(addr + self.idx_y as usize, operand);
             }
 
             AddressMode::Absolute    => {
-                let addr = cart.read_u16(self.pc + 1) as usize;
+                let addr = self.ram.read_u16(self.pc + 1) as usize;
                 self.ram.write_u8(addr, operand);
             }
 
             AddressMode::AbsoluteX   => {
-                let addr = cart.read_u16(self.pc + 1) as usize;
+                let addr = self.ram.read_u16(self.pc + 1) as usize;
                 self.ram.write_u8(addr + self.idx_x as usize, operand);
             }
 
             AddressMode::AbsoluteY   => {
-                let addr = cart.read_u16(self.pc + 1) as usize;
+                let addr = self.ram.read_u16(self.pc + 1) as usize;
                 self.ram.write_u8(addr + self.idx_y as usize, operand);
             }
 
             AddressMode::IndirectX   => {
-                let mut ptr = (cart.read_u8(self.pc + 1) + self.idx_x) as usize;
+                let mut ptr = (self.ram.read_u8(self.pc + 1) + self.idx_x) as usize;
                 ptr = ptr % 0xFF;
 
                 let addr = self.ram.read_u16(ptr) as usize;
@@ -672,7 +683,7 @@ impl<M: Memory> Mcs6502<M> {
             }
 
             AddressMode::IndirectY   => {
-                let mut addr = cart.read_u16(self.pc + 1) as usize;
+                let mut addr = self.ram.read_u16(self.pc + 1) as usize;
                 addr += self.idx_y as usize;
 
                 self.ram.write_u8(addr, operand);
@@ -849,8 +860,8 @@ impl<M: Memory> Mcs6502<M> {
         }
     }
 
-    fn jump(&mut self, addr: u16) {
-        self.pc = addr as usize;
+    fn jump(&mut self, addr: usize) {
+        self.pc = addr;
     }
 
     fn op_adc(&mut self, operand: u8) {
@@ -883,7 +894,7 @@ impl<M: Memory> Mcs6502<M> {
         self.set_flag(accu == 0, STS_ZER_MASK);
     }
 
-    fn op_asl(&mut self, mut operand: u8, cart: &Memory) {
+    fn op_asl(&mut self, mut operand: u8) {
         self.set_flag((operand >> 7) == 1, STS_CAR_MASK);
 
         operand <<= 1;
@@ -891,7 +902,7 @@ impl<M: Memory> Mcs6502<M> {
         self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
         self.set_flag(operand == 0, STS_ZER_MASK);
     
-        self.set_operand(cart, operand);
+        self.set_operand(operand);
     }
 
     fn op_bcc(&mut self, operand: u8) {
@@ -984,9 +995,9 @@ impl<M: Memory> Mcs6502<M> {
         self.set_flag(idx_y == operand, STS_ZER_MASK);
     }
 
-    fn op_dec(&mut self, mut operand: u8, cart: &Memory) {
+    fn op_dec(&mut self, mut operand: u8) {
         operand += 1;
-        self.set_operand(cart, operand);
+        self.set_operand(operand);
 
         self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
         self.set_flag(operand == 0, STS_ZER_MASK);
@@ -1016,9 +1027,9 @@ impl<M: Memory> Mcs6502<M> {
         self.set_flag(accu == 0, STS_ZER_MASK);
     }
 
-    fn op_inc(&mut self, mut operand: u8, cart: &Memory) {
+    fn op_inc(&mut self, mut operand: u8) {
         operand += 1;
-        self.set_operand(cart, operand);
+        self.set_operand(operand);
 
         self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
         self.set_flag(operand == 0, STS_ZER_MASK);
@@ -1040,11 +1051,12 @@ impl<M: Memory> Mcs6502<M> {
         self.set_flag(idx_y == 0, STS_ZER_MASK);
     }
 
-    fn op_jmp(&mut self, cart: &Memory) {
+    fn op_jmp(&mut self) {
         match self.addr_mode {
             AddressMode::Absolute => {
-                let addr = cart.read_u16(self.pc + 1);
-                self.jump(addr);
+                let offs = self.pc_offset();
+                let addr = self.ram.read_u16(self.pc + 1) as usize;
+                self.jump(addr - offs);
             }
 
             AddressMode::IndirectX => {
@@ -1057,9 +1069,9 @@ impl<M: Memory> Mcs6502<M> {
         }
     }
 
-    fn op_jsr(&mut self, cart: &Memory) {
+    fn op_jsr(&mut self) {
         // TODO: PC is incremented after this!
-        let addr = cart.read_u16(self.pc + 1) as usize;
+        let addr = self.ram.read_u16(self.pc + 1) as usize;
 
         // Store pc.
         // TODO: SP starts at 0x01FF, but atari2600
@@ -1135,7 +1147,7 @@ impl<M: Memory> Mcs6502<M> {
         self.status = self.ram.read_u8(addr);
     }
 
-    fn op_rol(&mut self, mut operand: u8, cart: &Memory) {
+    fn op_rol(&mut self, mut operand: u8) {
         let input_carry = self.get_flag(STS_CAR_MASK) as u8;
         self.set_flag((operand >> 7) == 1, STS_CAR_MASK);
 
@@ -1147,10 +1159,10 @@ impl<M: Memory> Mcs6502<M> {
         self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
         self.set_flag(operand == 0, STS_ZER_MASK);
     
-        self.set_operand(cart, operand);
+        self.set_operand(operand);
     }
 
-    fn op_ror(&mut self, mut operand: u8, cart: &Memory) {
+    fn op_ror(&mut self, mut operand: u8) {
         let input_carry = self.get_flag(STS_CAR_MASK) as u8;
         self.set_flag((operand & 1) == 1, STS_CAR_MASK);
 
@@ -1160,7 +1172,7 @@ impl<M: Memory> Mcs6502<M> {
         self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
         self.set_flag(operand == 0, STS_ZER_MASK);
 
-        self.set_operand(cart, operand);
+        self.set_operand(operand);
     }
 
     fn op_rti(&mut self) {
@@ -1203,19 +1215,19 @@ impl<M: Memory> Mcs6502<M> {
         self.set_flag(true, STS_INT_MASK);
     }
 
-    fn op_sta(&mut self, cart: &Memory) {
+    fn op_sta(&mut self) {
         let res = self.accu;
-        self.set_operand(cart, res);
+        self.set_operand(res);
     }
 
-    fn op_stx(&mut self, cart: &Memory) {
+    fn op_stx(&mut self) {
         let res = self.idx_x;
-        self.set_operand(cart, res);
+        self.set_operand(res);
     }
 
-    fn op_sty(&mut self, cart: &Memory) {
+    fn op_sty(&mut self) {
         let res = self.idx_y;
-        self.set_operand(cart, res);
+        self.set_operand(res);
     }
 
     fn op_tax(&mut self) {
@@ -1261,5 +1273,31 @@ impl<M: Memory> Mcs6502<M> {
     fn op_txs(&mut self) {
         // TODO: Set flags here too?
         self.sp = self.idx_x;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use mems::rom::Rom8b;
+    use mems::ram::Ram8b64kB;
+    use cpus::Cpu;
+    use cpus::mcs6502::Mcs6502;
+    use cpus::mcs6502;
+
+    #[test]
+    fn branches() {
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_JMP_ABSOLUTE);
+        instructions.push(0xA0);
+        instructions.push(0x01);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.execute();
+        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Absolute);
+
+        assert_eq!(cpu.pc, 0x01A0);
     }
 }
