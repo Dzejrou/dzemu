@@ -855,13 +855,20 @@ impl<M: Memory> Mcs6502<M> {
             let soff = offset as i8;
             let mut spc = self.pc as isize;
             spc += soff as isize;
+            spc -= self.pc_offset() as isize;
 
             self.pc = spc as usize;
         }
     }
 
     fn jump(&mut self, addr: usize) {
-        self.pc = addr;
+        self.pc = addr + ROM_MAP_ADDRESS;
+    }
+
+    fn pc(&self) -> usize {
+        // Returns the addr relative to the start of
+        // the rom mapping block.
+        self.pc - ROM_MAP_ADDRESS
     }
 
     fn op_adc(&mut self, operand: u8) {
@@ -1285,7 +1292,7 @@ mod tests {
     use cpus::mcs6502;
 
     #[test]
-    fn branches() {
+    fn op_jmp() {
         let mut instructions: Vec<u8> = Vec::new();
         instructions.push(mcs6502::OP_JMP_ABSOLUTE);
         instructions.push(0xA0);
@@ -1295,9 +1302,89 @@ mod tests {
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
 
         cpu.boot(&cart);
+        let mut target = 0x01A0;
+
+        // Absolute jump.
         cpu.execute();
         assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Absolute);
+        assert_eq!(cpu.pc(), target);
+    }
 
-        assert_eq!(cpu.pc, 0x01A0);
+    #[test]
+    fn op_bcc() {
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_BCC_RELATIVE);
+        instructions.push(0x0A);
+        instructions.push(mcs6502::OP_BCC_RELATIVE);
+        instructions.push(0x0A);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+
+        let mut target = 0x02;
+        cpu.set_flag(true, mcs6502::STS_CAR_MASK);
+        cpu.execute();
+        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
+        assert_eq!(cpu.pc(), target);
+
+        target += 0x0A;
+        cpu.set_flag(false, mcs6502::STS_CAR_MASK);
+        cpu.execute();
+        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
+        assert_eq!(cpu.pc(), target);
+    }
+
+    #[test]
+    fn op_bcs() {
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_BCS_RELATIVE);
+        instructions.push(0x0A);
+        instructions.push(mcs6502::OP_BCS_RELATIVE);
+        instructions.push(0x0A);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        let mut target = 0x02;
+
+        cpu.set_flag(false, mcs6502::STS_CAR_MASK);
+        cpu.execute();
+        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
+        assert_eq!(cpu.pc(), target);
+
+        target += 0x0A;
+        cpu.set_flag(true, mcs6502::STS_CAR_MASK);
+        cpu.execute();
+        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
+        assert_eq!(cpu.pc(), target);
+    }
+
+    #[test]
+    fn op_beq() {
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_BEQ_RELATIVE);
+        instructions.push(0x0A);
+        instructions.push(mcs6502::OP_BEQ_RELATIVE);
+        instructions.push(0x0A);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        let mut target = 0x02;
+
+        cpu.set_flag(false, mcs6502::STS_ZER_MASK);
+        cpu.execute();
+        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
+        assert_eq!(cpu.pc(), target);
+
+        target += 0x0A;
+        cpu.set_flag(true, mcs6502::STS_ZER_MASK);
+        cpu.execute();
+        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
+        assert_eq!(cpu.pc(), target);
     }
 }
