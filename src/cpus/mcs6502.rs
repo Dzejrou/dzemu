@@ -1004,7 +1004,7 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_dec(&mut self, mut operand: u8) {
-        operand += 1;
+        operand -= 1;
         self.set_operand(operand);
 
         self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
@@ -1441,21 +1441,48 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_dec() {
-        // TODO:
+        // TODO: Test multiple addressing modes.
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_DEC_ABSOLUTE);
+        instructions.push(0x0A);
+        instructions.push(0x00);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.memory().write_u8(0x000A, 5);
+        cpu.execute();
+        assert_eq!(cpu.memory().read_u8(0x000A), 4);
     }
 
     #[test]
-    #[ignore]
     fn op_dex() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_DEX_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.idx_x = 0x0B;
+        cpu.execute();
+        assert_eq!(cpu.idx_x, 0x0A);
     }
 
     #[test]
-    #[ignore]
     fn op_dey() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_DEY_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.idx_y = 0x0B;
+        cpu.execute();
+        assert_eq!(cpu.idx_y, 0x0A);
     }
 
     #[test]
