@@ -1292,6 +1292,24 @@ mod tests {
     use cpus::mcs6502::Mcs6502;
     use cpus::mcs6502;
 
+    #[test]
+    #[ignore]
+    fn op_adc() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_and() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_asl() {
+        // TODO:
+    }
+
     fn aux_branch(opcode: u8, flag: u8, cond: bool) {
         let mut instructions: Vec<u8> = Vec::new();
         instructions.push(opcode);
@@ -1404,7 +1422,68 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
+    fn op_cmp() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_cpx() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_cpy() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_dec() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_dex() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_dey() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_eor() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_inc() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_inx() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_iny() {
+        // TODO:
+    }
+
+    #[test]
     fn op_jmp() {
+        // TODO: Test indirect when implemented.
         let mut instructions: Vec<u8> = Vec::new();
         instructions.push(mcs6502::OP_JMP_ABSOLUTE);
         instructions.push(0xA0);
@@ -1422,4 +1501,171 @@ mod tests {
         assert_eq!(cpu.pc(), target);
     }
 
+    #[test]
+    #[ignore]
+    fn op_jsr() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_lda() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_ldx() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_ldy() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_lsr() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_nop() {
+        assert!(true);
+    }
+
+    #[test]
+    #[ignore]
+    fn op_ora() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_pha() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_php() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_pla() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_plp() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_rol() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_ror() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_rti() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_rts() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_sbc() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_sec() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_sed() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_sei() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_sta() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_stx() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_sty() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_tax() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_tay() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_tya() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_tsx() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_txa() {
+        // TODO:
+    }
+
+    #[test]
+    #[ignore]
+    fn op_txs() {
+        // TODO:
+    }
 }
