@@ -839,6 +839,7 @@ impl<M: Memory> Mcs6502<M> {
             OP_BMI_RELATIVE    |
             OP_BNE_RELATIVE    |
             OP_BPL_RELATIVE    |
+            OP_BVC_RELATIVE    |
             OP_BVS_RELATIVE    => AddressMode::Relative,
 
             OP_ASL_ACCUMULATOR |
@@ -1291,6 +1292,117 @@ mod tests {
     use cpus::mcs6502::Mcs6502;
     use cpus::mcs6502;
 
+    fn aux_branch(opcode: u8, flag: u8, cond: bool) {
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(opcode);
+        instructions.push(0x0A);
+        instructions.push(opcode);
+        instructions.push(0x0A);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+
+        // Fail to branch.
+        let mut target = 0x02;
+        cpu.set_flag(!cond, flag);
+        cpu.execute();
+        assert_eq!(cpu.pc(), target);
+
+        // Succeed at branching.
+        target += 0x0A;
+        cpu.set_flag(cond, flag);
+        cpu.execute();
+        assert_eq!(cpu.pc(), target);
+    
+    }
+
+    #[test]
+    fn op_bcc() {
+        aux_branch(mcs6502::OP_BCC_RELATIVE, mcs6502::STS_CAR_MASK, false);
+    }
+
+    #[test]
+    fn op_bcs() {
+        aux_branch(mcs6502::OP_BCS_RELATIVE, mcs6502::STS_CAR_MASK, true);
+    }
+
+    #[test]
+    fn op_beq() {
+        aux_branch(mcs6502::OP_BEQ_RELATIVE, mcs6502::STS_ZER_MASK, true);
+    }
+
+    #[test]
+    #[ignore]
+    fn op_bit() {
+        // TODO:
+    }
+
+    #[test]
+    fn op_bmi() {
+        aux_branch(mcs6502::OP_BMI_RELATIVE, mcs6502::STS_NEG_MASK, true);
+    }
+
+    #[test]
+    fn op_bne() {
+        aux_branch(mcs6502::OP_BNE_RELATIVE, mcs6502::STS_ZER_MASK, false);
+    }
+
+    #[test]
+    fn op_bpl() {
+        aux_branch(mcs6502::OP_BPL_RELATIVE, mcs6502::STS_NEG_MASK, false);
+    }
+
+    #[test]
+    #[ignore]
+    fn op_brk() {
+        // TODO:
+    }
+
+    #[test]
+    fn op_bvc() {
+        aux_branch(mcs6502::OP_BVC_RELATIVE, mcs6502::STS_OVF_MASK, false);
+    }
+
+    #[test]
+    fn op_bvs() {
+        aux_branch(mcs6502::OP_BVS_RELATIVE, mcs6502::STS_OVF_MASK, true);
+    }
+
+    fn aux_clear(opcode: u8, flag: u8) {
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(opcode);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.set_flag(true, flag);
+        cpu.execute();
+        assert!(!cpu.get_flag(flag));
+    }
+
+    #[test]
+    fn op_clc() {
+        aux_clear(mcs6502::OP_CLC_IMPLIED, mcs6502::STS_CAR_MASK);
+    }
+
+    #[test]
+    fn op_cld() {
+        aux_clear(mcs6502::OP_CLD_IMPLIED, mcs6502::STS_DEC_MASK);
+    }
+
+    #[test]
+    fn op_cli() {
+        aux_clear(mcs6502::OP_CLI_IMPLIED, mcs6502::STS_INT_MASK);
+    }
+
+    #[test]
+    fn op_clv() {
+        aux_clear(mcs6502::OP_CLV_IMPLIED, mcs6502::STS_OVF_MASK);
+    }
+
     #[test]
     fn op_jmp() {
         let mut instructions: Vec<u8> = Vec::new();
@@ -1302,7 +1414,7 @@ mod tests {
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
 
         cpu.boot(&cart);
-        let mut target = 0x01A0;
+        let target = 0x01A0;
 
         // Absolute jump.
         cpu.execute();
@@ -1310,81 +1422,4 @@ mod tests {
         assert_eq!(cpu.pc(), target);
     }
 
-    #[test]
-    fn op_bcc() {
-        let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_BCC_RELATIVE);
-        instructions.push(0x0A);
-        instructions.push(mcs6502::OP_BCC_RELATIVE);
-        instructions.push(0x0A);
-
-        let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
-
-        cpu.boot(&cart);
-
-        let mut target = 0x02;
-        cpu.set_flag(true, mcs6502::STS_CAR_MASK);
-        cpu.execute();
-        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
-        assert_eq!(cpu.pc(), target);
-
-        target += 0x0A;
-        cpu.set_flag(false, mcs6502::STS_CAR_MASK);
-        cpu.execute();
-        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
-        assert_eq!(cpu.pc(), target);
-    }
-
-    #[test]
-    fn op_bcs() {
-        let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_BCS_RELATIVE);
-        instructions.push(0x0A);
-        instructions.push(mcs6502::OP_BCS_RELATIVE);
-        instructions.push(0x0A);
-
-        let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
-
-        cpu.boot(&cart);
-        let mut target = 0x02;
-
-        cpu.set_flag(false, mcs6502::STS_CAR_MASK);
-        cpu.execute();
-        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
-        assert_eq!(cpu.pc(), target);
-
-        target += 0x0A;
-        cpu.set_flag(true, mcs6502::STS_CAR_MASK);
-        cpu.execute();
-        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
-        assert_eq!(cpu.pc(), target);
-    }
-
-    #[test]
-    fn op_beq() {
-        let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_BEQ_RELATIVE);
-        instructions.push(0x0A);
-        instructions.push(mcs6502::OP_BEQ_RELATIVE);
-        instructions.push(0x0A);
-
-        let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
-
-        cpu.boot(&cart);
-        let mut target = 0x02;
-
-        cpu.set_flag(false, mcs6502::STS_ZER_MASK);
-        cpu.execute();
-        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
-        assert_eq!(cpu.pc(), target);
-
-        target += 0x0A;
-        cpu.set_flag(true, mcs6502::STS_ZER_MASK);
-        cpu.execute();
-        assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Relative);
-        assert_eq!(cpu.pc(), target);
-    }
 }
