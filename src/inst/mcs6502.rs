@@ -1,3 +1,166 @@
+#[derive(Debug, PartialEq)]
+pub enum AddressMode {
+    Immediate,
+    ZeroPage,
+    ZeroPageX,
+    ZeroPageY,
+    Absolute,
+    AbsoluteX,
+    AbsoluteY,
+    IndirectX,
+    IndirectY,
+    Relative,
+    Accumulator,
+    None
+}
+
+pub mod addr {
+    use inst::mcs6502::ops;
+    use inst::mcs6502::AddressMode;
+
+    pub fn get_addr_mode(opcode: u8) -> AddressMode {
+        match opcode {
+            ops::ADC_IMMEDIATE   |
+            ops::AND_IMMEDIATE   |
+            ops::CMP_IMMEDIATE   |
+            ops::CPX_IMMEDIATE   |
+            ops::CPY_IMMEDIATE   |
+            ops::EOR_IMMEDIATE   |
+            ops::LDA_IMMEDIATE   |
+            ops::LDX_IMMEDIATE   |
+            ops::LDY_IMMEDIATE   |
+            ops::ORA_IMMEDIATE   |
+            ops::SBC_IMMEDIATE   => AddressMode::Immediate,
+
+            ops::ADC_ZERO_PAGE   |
+            ops::AND_ZERO_PAGE   |
+            ops::ASL_ZERO_PAGE   |
+            ops::BIT_ZERO_PAGE   |
+            ops::CMP_ZERO_PAGE   |
+            ops::CPX_ZERO_PAGE   |
+            ops::CPY_ZERO_PAGE   |
+            ops::DEC_ZERO_PAGE   |
+            ops::EOR_ZERO_PAGE   |
+            ops::INC_ZERO_PAGE   |
+            ops::LDA_ZERO_PAGE   |
+            ops::LDX_ZERO_PAGE   |
+            ops::LDY_ZERO_PAGE   |
+            ops::LSR_ZERO_PAGE   |
+            ops::ORA_ZERO_PAGE   |
+            ops::ROL_ZERO_PAGE   |
+            ops::ROR_ZERO_PAGE   |
+            ops::SBC_ZERO_PAGE   |
+            ops::STA_ZERO_PAGE   |
+            ops::STX_ZERO_PAGE   |
+            ops::STY_ZERO_PAGE   => AddressMode::ZeroPage,
+
+            ops::ADC_ZERO_PAGE_X |
+            ops::AND_ZERO_PAGE_X |
+            ops::ASL_ZERO_PAGE_X |
+            ops::CMP_ZERO_PAGE_X |
+            ops::DEC_ZERO_PAGE_X |
+            ops::EOR_ZERO_PAGE_X |
+            ops::INC_ZERO_PAGE_X |
+            ops::LDA_ZERO_PAGE_X |
+            ops::LDY_ZERO_PAGE_X |
+            ops::LSR_ZERO_PAGE_X |
+            ops::ORA_ZERO_PAGE_X |
+            ops::ROL_ZERO_PAGE_X |
+            ops::ROR_ZERO_PAGE_X |
+            ops::SBC_ZERO_PAGE_X |
+            ops::STA_ZERO_PAGE_X |
+            ops::STY_ZERO_PAGE_X => AddressMode::ZeroPageX,
+
+            ops::LDX_ZERO_PAGE_Y |
+            ops::STX_ZERO_PAGE_Y => AddressMode::ZeroPageY,
+
+            ops::ADC_ABSOLUTE    |
+            ops::AND_ABSOLUTE    |
+            ops::ASL_ABSOLUTE    |
+            ops::BIT_ABSOLUTE    |
+            ops::CMP_ABSOLUTE    |
+            ops::CPX_ABSOLUTE    |
+            ops::CPY_ABSOLUTE    |
+            ops::DEC_ABSOLUTE    |
+            ops::EOR_ABSOLUTE    |
+            ops::INC_ABSOLUTE    |
+            ops::JMP_ABSOLUTE    |
+            ops::JSR_ABSOLUTE    |
+            ops::LDA_ABSOLUTE    |
+            ops::LDX_ABSOLUTE    |
+            ops::LDY_ABSOLUTE    |
+            ops::LSR_ABSOLUTE    |
+            ops::ORA_ABSOLUTE    |
+            ops::ROL_ABSOLUTE    |
+            ops::ROR_ABSOLUTE    |
+            ops::SBC_ABSOLUTE    |
+            ops::STA_ABSOLUTE    |
+            ops::STX_ABSOLUTE    |
+            ops::STY_ABSOLUTE    => AddressMode::Absolute,
+
+            ops::ADC_ABSOLUTE_X  |
+            ops::AND_ABSOLUTE_X  |
+            ops::ASL_ABSOLUTE_X  |
+            ops::CMP_ABSOLUTE_X  |
+            ops::DEC_ABSOLUTE_X  |
+            ops::EOR_ABSOLUTE_X  |
+            ops::INC_ABSOLUTE_X  |
+            ops::LDA_ABSOLUTE_X  |
+            ops::LDY_ABSOLUTE_X  |
+            ops::LSR_ABSOLUTE_X  |
+            ops::ORA_ABSOLUTE_X  |
+            ops::ROL_ABSOLUTE_X  |
+            ops::ROR_ABSOLUTE_X  |
+            ops::SBC_ABSOLUTE_X  |
+            ops::STA_ABSOLUTE_X  => AddressMode::AbsoluteX,
+
+            ops::ADC_ABSOLUTE_Y  |
+            ops::AND_ABSOLUTE_Y  |
+            ops::CMP_ABSOLUTE_Y  |
+            ops::EOR_ABSOLUTE_Y  |
+            ops::LDA_ABSOLUTE_Y  |
+            ops::LDX_ABSOLUTE_Y  |
+            ops::ORA_ABSOLUTE_Y  |
+            ops::SBC_ABSOLUTE_Y  |
+            ops::STA_ABSOLUTE_Y  => AddressMode::AbsoluteY,
+
+            ops::ADC_INDIRECT_X  |
+            ops::AND_INDIRECT_X  |
+            ops::CMP_INDIRECT_X  |
+            ops::EOR_INDIRECT_X  |
+            ops::LDA_INDIRECT_X  |
+            ops::ORA_INDIRECT_X  |
+            ops::SBC_INDIRECT_X  |
+            ops::STA_INDIRECT_X  => AddressMode::IndirectX,
+
+            ops::ADC_INDIRECT_Y  |
+            ops::AND_INDIRECT_Y  |
+            ops::CMP_INDIRECT_Y  |
+            ops::EOR_INDIRECT_Y  |
+            ops::LDA_INDIRECT_Y  |
+            ops::ORA_INDIRECT_Y  |
+            ops::SBC_INDIRECT_Y  |
+            ops::STA_INDIRECT_Y  => AddressMode::IndirectY,
+
+            ops::BCC_RELATIVE    |
+            ops::BCS_RELATIVE    |
+            ops::BEQ_RELATIVE    |
+            ops::BMI_RELATIVE    |
+            ops::BNE_RELATIVE    |
+            ops::BPL_RELATIVE    |
+            ops::BVC_RELATIVE    |
+            ops::BVS_RELATIVE    => AddressMode::Relative,
+
+            ops::ASL_ACCUMULATOR |
+            ops::LSR_ACCUMULATOR |
+            ops::ROL_ACCUMULATOR |
+            ops::ROR_ACCUMULATOR => AddressMode::Accumulator,
+
+            _ => AddressMode::None,
+        }
+    }
+}
+
 pub mod ops {
     // Add memory to accumulator with carry.
     pub const ADC_IMMEDIATE:   u8 = 0x69;
