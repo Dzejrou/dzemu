@@ -1,268 +1,6 @@
 use cpus::Cpu;
 use mems::Memory;
-
-// Add memory to accumulator with carry.
-const OP_ADC_IMMEDIATE:   u8 = 0x69;
-const OP_ADC_ZERO_PAGE:   u8 = 0x65;
-const OP_ADC_ZERO_PAGE_X: u8 = 0x75;
-const OP_ADC_ABSOLUTE:    u8 = 0x6D;
-const OP_ADC_ABSOLUTE_X:  u8 = 0x7D;
-const OP_ADC_ABSOLUTE_Y:  u8 = 0x79;
-const OP_ADC_INDIRECT_X:  u8 = 0x61;
-const OP_ADC_INDIRECT_Y:  u8 = 0x71;
-
-// "And" memory with accumulator.
-const OP_AND_IMMEDIATE:   u8 = 0x29;
-const OP_AND_ZERO_PAGE:   u8 = 0x25;
-const OP_AND_ZERO_PAGE_X: u8 = 0x35;
-const OP_AND_ABSOLUTE:    u8 = 0x2D;
-const OP_AND_ABSOLUTE_X:  u8 = 0x3D;
-const OP_AND_ABSOLUTE_Y:  u8 = 0x39;
-const OP_AND_INDIRECT_X:  u8 = 0x21;
-const OP_AND_INDIRECT_Y:  u8 = 0x31;
-
-// Shift left one bit (memory or accumulator).
-const OP_ASL_ACCUMULATOR: u8 = 0x0A;
-const OP_ASL_ZERO_PAGE:   u8 = 0x06;
-const OP_ASL_ZERO_PAGE_X: u8 = 0x16;
-const OP_ASL_ABSOLUTE:    u8 = 0x0E;
-const OP_ASL_ABSOLUTE_X:  u8 = 0x1E;
-
-// Branch on carry clear.
-const OP_BCC_RELATIVE:    u8 = 0x90;
-
-// Branch on carry set.
-const OP_BCS_RELATIVE:    u8 = 0xB0;
-
-// Branch on result zero.
-const OP_BEQ_RELATIVE:    u8 = 0xF0;
-
-// Test bits in memory with accumulator.
-const OP_BIT_ZERO_PAGE:   u8 = 0x24;
-const OP_BIT_ABSOLUTE:    u8 = 0x2C;
-
-// Branch on result minus.
-const OP_BMI_RELATIVE:    u8 = 0x30;
-
-// Branch on result not zero.
-const OP_BNE_RELATIVE:    u8 = 0xD0;
-
-// Branch on result plus.
-const OP_BPL_RELATIVE:    u8 = 0x10;
-
-// Force break.
-const OP_BRK_IMPLIED:     u8 = 0x00;
-
-// Branch on overflow clear.
-const OP_BVC_RELATIVE:    u8 = 0x50;
-
-// Branch on overflow set.
-const OP_BVS_RELATIVE:    u8 = 0x70;
-
-// Clear carry flag.
-const OP_CLC_IMPLIED:     u8 = 0x18;
-
-// Clear decimal mode.
-const OP_CLD_IMPLIED:     u8 = 0xD8;
-
-// Clear interrupt disable bit.
-const OP_CLI_IMPLIED:     u8 = 0x58;
-
-// Clear overflow flag.
-const OP_CLV_IMPLIED:     u8 = 0xB8;
-
-// Compare memory and accumulator.
-const OP_CMP_IMMEDIATE:   u8 = 0xC9;
-const OP_CMP_ZERO_PAGE:   u8 = 0xC5;
-const OP_CMP_ZERO_PAGE_X: u8 = 0xD5;
-const OP_CMP_ABSOLUTE:    u8 = 0xCD;
-const OP_CMP_ABSOLUTE_X:  u8 = 0xDD;
-const OP_CMP_ABSOLUTE_Y:  u8 = 0xD9;
-const OP_CMP_INDIRECT_X:  u8 = 0xC1;
-const OP_CMP_INDIRECT_Y:  u8 = 0xD1;
-
-// Compare memory to index X.
-const OP_CPX_IMMEDIATE:   u8 = 0xE0;
-const OP_CPX_ZERO_PAGE:   u8 = 0xE4;
-const OP_CPX_ABSOLUTE:    u8 = 0xEC;
-
-// Compare memory to index Y.
-const OP_CPY_IMMEDIATE:   u8 = 0xC0;
-const OP_CPY_ZERO_PAGE:   u8 = 0xC4;
-const OP_CPY_ABSOLUTE:    u8 = 0xCC;
-
-// Decrement memory by one.
-const OP_DEC_ZERO_PAGE:   u8 = 0xC6;
-const OP_DEC_ZERO_PAGE_X: u8 = 0xD6;
-const OP_DEC_ABSOLUTE:    u8 = 0xCE;
-const OP_DEC_ABSOLUTE_X:  u8 = 0xDE;
-
-// Decrement index X by one.
-const OP_DEX_IMPLIED:     u8 = 0xCA;
-
-// Decrement index Y by one.
-const OP_DEY_IMPLIED:     u8 = 0x88;
-
-// "Exclusive-Or" memory with accumulator.
-const OP_EOR_IMMEDIATE:   u8 = 0x49;
-const OP_EOR_ZERO_PAGE:   u8 = 0x45;
-const OP_EOR_ZERO_PAGE_X: u8 = 0x55;
-const OP_EOR_ABSOLUTE:    u8 = 0x4D;
-const OP_EOR_ABSOLUTE_X:  u8 = 0x5D;
-const OP_EOR_ABSOLUTE_Y:  u8 = 0x59;
-const OP_EOR_INDIRECT_X:  u8 = 0x41;
-const OP_EOR_INDIRECT_Y:  u8 = 0x51;
-
-// Increment memory by one.
-const OP_INC_ZERO_PAGE:   u8 = 0xE6;
-const OP_INC_ZERO_PAGE_X: u8 = 0xF6;
-const OP_INC_ABSOLUTE:    u8 = 0xEE;
-const OP_INC_ABSOLUTE_X:  u8 = 0xFE;
-
-// Increment index X by one.
-const OP_INX_IMPLIED:     u8 = 0xE8;
-
-// Increment index Y by one.
-const OP_INY_IMPLIED:     u8 = 0xC8;
-
-// Jump to new location.
-const OP_JMP_ABSOLUTE:    u8 = 0x4C;
-const OP_JMP_INDIRECT:    u8 = 0x6C;
-
-// Jump to new location saving return address.
-const OP_JSR_ABSOLUTE:    u8 = 0x20;
-
-// Load accumulator with memory.
-const OP_LDA_IMMEDIATE:   u8 = 0xA9;
-const OP_LDA_ZERO_PAGE:   u8 = 0xA5;
-const OP_LDA_ZERO_PAGE_X: u8 = 0xB5;
-const OP_LDA_ABSOLUTE:    u8 = 0xAD;
-const OP_LDA_ABSOLUTE_X:  u8 = 0xBD;
-const OP_LDA_ABSOLUTE_Y:  u8 = 0xB9;
-const OP_LDA_INDIRECT_X:  u8 = 0xA1;
-const OP_LDA_INDIRECT_Y:  u8 = 0xB1;
-
-// Load index X with memory.
-const OP_LDX_IMMEDIATE:   u8 = 0xA2;
-const OP_LDX_ZERO_PAGE:   u8 = 0xA6;
-const OP_LDX_ZERO_PAGE_Y: u8 = 0xB6;
-const OP_LDX_ABSOLUTE:    u8 = 0xAE;
-const OP_LDX_ABSOLUTE_Y:  u8 = 0xBE;
-
-// Load index Y with memory.
-const OP_LDY_IMMEDIATE:   u8 = 0xA0;
-const OP_LDY_ZERO_PAGE:   u8 = 0xA4;
-const OP_LDY_ZERO_PAGE_X: u8 = 0xB4;
-const OP_LDY_ABSOLUTE:    u8 = 0xAC;
-const OP_LDY_ABSOLUTE_X:  u8 = 0xBC;
-
-// Shift right one bit (memory or accumulator).
-const OP_LSR_ACCUMULATOR: u8 = 0x4A;
-const OP_LSR_ZERO_PAGE:   u8 = 0x46;
-const OP_LSR_ZERO_PAGE_X: u8 = 0x56;
-const OP_LSR_ABSOLUTE:    u8 = 0x4E;
-const OP_LSR_ABSOLUTE_X:  u8 = 0x5E;
-
-// No operation.
-const OP_NOP_IMPLIED:     u8 = 0xEA;
-
-// "OR" memory with accumulator.
-const OP_ORA_IMMEDIATE:   u8 = 0x09;
-const OP_ORA_ZERO_PAGE:   u8 = 0x05;
-const OP_ORA_ZERO_PAGE_X: u8 = 0x15;
-const OP_ORA_ABSOLUTE:    u8 = 0x0D;
-const OP_ORA_ABSOLUTE_X:  u8 = 0x1D;
-const OP_ORA_ABSOLUTE_Y:  u8 = 0x19;
-const OP_ORA_INDIRECT_X:  u8 = 0x01;
-const OP_ORA_INDIRECT_Y:  u8 = 0x11;
-
-// Push accumulator on stack.
-const OP_PHA_IMPLIED:     u8 = 0x48;
-
-// Push processor status on stack.
-const OP_PHP_IMPLIED:     u8 = 0x08;
-
-// Pull accumulator from stack.
-const OP_PLA_IMPLIED:     u8 = 0x68;
-
-// Pull processor status from stack.
-const OP_PLP_IMPLIED:     u8 = 0x28;
-
-// Rotate one bit left (memory or accumulator).
-const OP_ROL_ACCUMULATOR: u8 = 0x2A;
-const OP_ROL_ZERO_PAGE:   u8 = 0x26;
-const OP_ROL_ZERO_PAGE_X: u8 = 0x36;
-const OP_ROL_ABSOLUTE:    u8 = 0x2E;
-const OP_ROL_ABSOLUTE_X:  u8 = 0x3E;
-
-// Rotate one bit right (memory or accumulator).
-const OP_ROR_ACCUMULATOR: u8 = 0x6A;
-const OP_ROR_ZERO_PAGE:   u8 = 0x66;
-const OP_ROR_ZERO_PAGE_X: u8 = 0x76;
-const OP_ROR_ABSOLUTE:    u8 = 0x6E;
-const OP_ROR_ABSOLUTE_X:  u8 = 0x7E;
-
-// Return from interrupt.
-const OP_RTI_IMPLIED:     u8 = 0x40;
-
-// Return from subroutine.
-const OP_RTS_IMPLIED:     u8 = 0x60;
-
-// Subtract memory from accumulator with borrow.
-const OP_SBC_IMMEDIATE:   u8 = 0xE9;
-const OP_SBC_ZERO_PAGE:   u8 = 0xE5;
-const OP_SBC_ZERO_PAGE_X: u8 = 0xF5;
-const OP_SBC_ABSOLUTE:    u8 = 0xED;
-const OP_SBC_ABSOLUTE_X:  u8 = 0xFD;
-const OP_SBC_ABSOLUTE_Y:  u8 = 0xF9;
-const OP_SBC_INDIRECT_X:  u8 = 0xE1;
-const OP_SBC_INDIRECT_Y:  u8 = 0xF1;
-
-// Set carry flag.
-const OP_SEC_IMPLIED:     u8 = 0x38;
-
-// Set decimal mode.
-const OP_SED_IMPLIED:     u8 = 0xF8;
-
-// Set interrupt disable status.
-const OP_SEI_IMPLIED:     u8 = 0x78;
-
-// Store accumulator in memory.
-const OP_STA_ZERO_PAGE:   u8 = 0x85;
-const OP_STA_ZERO_PAGE_X: u8 = 0x95;
-const OP_STA_ABSOLUTE:    u8 = 0x8D;
-const OP_STA_ABSOLUTE_X:  u8 = 0x9D;
-const OP_STA_ABSOLUTE_Y:  u8 = 0x99;
-const OP_STA_INDIRECT_X:  u8 = 0x81;
-const OP_STA_INDIRECT_Y:  u8 = 0x91;
-
-// Store index X in memory.
-const OP_STX_ZERO_PAGE:   u8 = 0x86;
-const OP_STX_ZERO_PAGE_Y: u8 = 0x96;
-const OP_STX_ABSOLUTE:    u8 = 0x8E;
-
-// Store index Y in memory.
-const OP_STY_ZERO_PAGE:   u8 = 0x84;
-const OP_STY_ZERO_PAGE_X: u8 = 0x94;
-const OP_STY_ABSOLUTE:    u8 = 0x8C;
-
-// Transfer accumulator to index X.
-const OP_TAX_IMPLIED:     u8 = 0xAA;
-
-// Transfer accumulator to inxed Y.
-const OP_TAY_IMPLIED:     u8 = 0xA8;
-
-// Transfer index Y to accumulator.
-const OP_TYA_IMPLIED:     u8 = 0x98;
-
-// Transfer stack pointer to index X.
-const OP_TSX_IMPLIED:     u8 = 0xBA;
-
-// Transfer index X to accumulator.
-const OP_TXA_IMPLIED:     u8 = 0x8A;
-
-// Transfer index X to stack pointer.
-const OP_TXS_IMPLIED:     u8 = 0x9A;
+use inst::mcs6502::ops;
 
 // Start of the interrupt vector.
 const INT_VECTOR_START:   usize = 0xFFFA;
@@ -349,212 +87,212 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
         let operand = self.get_operand();
 
         match opcode {
-            OP_ADC_IMMEDIATE   |
-            OP_ADC_ZERO_PAGE   |
-            OP_ADC_ZERO_PAGE_X |
-            OP_ADC_ABSOLUTE    |
-            OP_ADC_ABSOLUTE_X  |
-            OP_ADC_ABSOLUTE_Y  |
-            OP_ADC_INDIRECT_X  |
-            OP_ADC_INDIRECT_Y  => self.op_adc(operand),
+            ops::ADC_IMMEDIATE   |
+            ops::ADC_ZERO_PAGE   |
+            ops::ADC_ZERO_PAGE_X |
+            ops::ADC_ABSOLUTE    |
+            ops::ADC_ABSOLUTE_X  |
+            ops::ADC_ABSOLUTE_Y  |
+            ops::ADC_INDIRECT_X  |
+            ops::ADC_INDIRECT_Y  => self.op_adc(operand),
 
-            OP_AND_IMMEDIATE   |
-            OP_AND_ZERO_PAGE   |
-            OP_AND_ZERO_PAGE_X |
-            OP_AND_ABSOLUTE    |
-            OP_AND_ABSOLUTE_X  |
-            OP_AND_ABSOLUTE_Y  |
-            OP_AND_INDIRECT_X  |
-            OP_AND_INDIRECT_Y  => self.op_and(operand),
+            ops::AND_IMMEDIATE   |
+            ops::AND_ZERO_PAGE   |
+            ops::AND_ZERO_PAGE_X |
+            ops::AND_ABSOLUTE    |
+            ops::AND_ABSOLUTE_X  |
+            ops::AND_ABSOLUTE_Y  |
+            ops::AND_INDIRECT_X  |
+            ops::AND_INDIRECT_Y  => self.op_and(operand),
 
-            OP_ASL_ACCUMULATOR |
-            OP_ASL_ZERO_PAGE   |
-            OP_ASL_ZERO_PAGE_X |
-            OP_ASL_ABSOLUTE    |
-            OP_ASL_ABSOLUTE_X  => self.op_asl(operand),
+            ops::ASL_ACCUMULATOR |
+            ops::ASL_ZERO_PAGE   |
+            ops::ASL_ZERO_PAGE_X |
+            ops::ASL_ABSOLUTE    |
+            ops::ASL_ABSOLUTE_X  => self.op_asl(operand),
 
-            OP_BCC_RELATIVE    => self.op_bcc(operand),
+            ops::BCC_RELATIVE    => self.op_bcc(operand),
 
-            OP_BCS_RELATIVE    => self.op_bcs(operand),
+            ops::BCS_RELATIVE    => self.op_bcs(operand),
 
-            OP_BEQ_RELATIVE    => self.op_beq(operand),
+            ops::BEQ_RELATIVE    => self.op_beq(operand),
 
-            OP_BIT_ZERO_PAGE   |
-            OP_BIT_ABSOLUTE    => self.op_bit(operand),
+            ops::BIT_ZERO_PAGE   |
+            ops::BIT_ABSOLUTE    => self.op_bit(operand),
 
-            OP_BMI_RELATIVE    => self.op_bmi(operand),
+            ops::BMI_RELATIVE    => self.op_bmi(operand),
 
-            OP_BNE_RELATIVE    => self.op_bne(operand),
+            ops::BNE_RELATIVE    => self.op_bne(operand),
 
-            OP_BPL_RELATIVE    => self.op_bpl(operand),
+            ops::BPL_RELATIVE    => self.op_bpl(operand),
 
-            OP_BRK_IMPLIED     => self.op_brk(operand),
+            ops::BRK_IMPLIED     => self.op_brk(operand),
 
-            OP_BVC_RELATIVE    => self.op_bvc(operand),
+            ops::BVC_RELATIVE    => self.op_bvc(operand),
 
-            OP_BVS_RELATIVE    => self.op_bvs(operand),
+            ops::BVS_RELATIVE    => self.op_bvs(operand),
 
-            OP_CLC_IMPLIED     => self.op_clc(),
+            ops::CLC_IMPLIED     => self.op_clc(),
 
-            OP_CLD_IMPLIED     => self.op_cld(),
+            ops::CLD_IMPLIED     => self.op_cld(),
 
-            OP_CLI_IMPLIED     => self.op_cli(),
+            ops::CLI_IMPLIED     => self.op_cli(),
 
-            OP_CLV_IMPLIED     => self.op_clv(),
+            ops::CLV_IMPLIED     => self.op_clv(),
 
-            OP_CMP_IMMEDIATE   |
-            OP_CMP_ZERO_PAGE   |
-            OP_CMP_ZERO_PAGE_X |
-            OP_CMP_ABSOLUTE    |
-            OP_CMP_ABSOLUTE_X  |
-            OP_CMP_ABSOLUTE_Y  |
-            OP_CMP_INDIRECT_X  |
-            OP_CMP_INDIRECT_Y  => self.op_cmp(operand),
+            ops::CMP_IMMEDIATE   |
+            ops::CMP_ZERO_PAGE   |
+            ops::CMP_ZERO_PAGE_X |
+            ops::CMP_ABSOLUTE    |
+            ops::CMP_ABSOLUTE_X  |
+            ops::CMP_ABSOLUTE_Y  |
+            ops::CMP_INDIRECT_X  |
+            ops::CMP_INDIRECT_Y  => self.op_cmp(operand),
 
-            OP_CPX_IMMEDIATE   |
-            OP_CPX_ZERO_PAGE   |
-            OP_CPX_ABSOLUTE    => self.op_cpx(operand),
+            ops::CPX_IMMEDIATE   |
+            ops::CPX_ZERO_PAGE   |
+            ops::CPX_ABSOLUTE    => self.op_cpx(operand),
 
-            OP_CPY_IMMEDIATE   |
-            OP_CPY_ZERO_PAGE   |
-            OP_CPY_ABSOLUTE    => self.op_cpy(operand),
+            ops::CPY_IMMEDIATE   |
+            ops::CPY_ZERO_PAGE   |
+            ops::CPY_ABSOLUTE    => self.op_cpy(operand),
 
-            OP_DEC_ZERO_PAGE   |
-            OP_DEC_ZERO_PAGE_X |
-            OP_DEC_ABSOLUTE    |
-            OP_DEC_ABSOLUTE_X  => self.op_dec(operand),
+            ops::DEC_ZERO_PAGE   |
+            ops::DEC_ZERO_PAGE_X |
+            ops::DEC_ABSOLUTE    |
+            ops::DEC_ABSOLUTE_X  => self.op_dec(operand),
 
-            OP_DEX_IMPLIED     => self.op_dex(),
+            ops::DEX_IMPLIED     => self.op_dex(),
 
-            OP_DEY_IMPLIED     => self.op_dey(),
+            ops::DEY_IMPLIED     => self.op_dey(),
 
-            OP_EOR_IMMEDIATE   |
-            OP_EOR_ZERO_PAGE   |
-            OP_EOR_ZERO_PAGE_X |
-            OP_EOR_ABSOLUTE    |
-            OP_EOR_ABSOLUTE_X  |
-            OP_EOR_ABSOLUTE_Y  |
-            OP_EOR_INDIRECT_X  |
-            OP_EOR_INDIRECT_Y  => self.op_eor(operand),
+            ops::EOR_IMMEDIATE   |
+            ops::EOR_ZERO_PAGE   |
+            ops::EOR_ZERO_PAGE_X |
+            ops::EOR_ABSOLUTE    |
+            ops::EOR_ABSOLUTE_X  |
+            ops::EOR_ABSOLUTE_Y  |
+            ops::EOR_INDIRECT_X  |
+            ops::EOR_INDIRECT_Y  => self.op_eor(operand),
 
-            OP_INC_ZERO_PAGE   |
-            OP_INC_ZERO_PAGE_X |
-            OP_INC_ABSOLUTE    |
-            OP_INC_ABSOLUTE_X  => self.op_inc(operand),
+            ops::INC_ZERO_PAGE   |
+            ops::INC_ZERO_PAGE_X |
+            ops::INC_ABSOLUTE    |
+            ops::INC_ABSOLUTE_X  => self.op_inc(operand),
 
-            OP_INX_IMPLIED     => self.op_inx(),
+            ops::INX_IMPLIED     => self.op_inx(),
 
-            OP_INY_IMPLIED     => self.op_iny(),
+            ops::INY_IMPLIED     => self.op_iny(),
 
-            OP_JMP_ABSOLUTE    |
-            OP_JMP_INDIRECT    => self.op_jmp(),
+            ops::JMP_ABSOLUTE    |
+            ops::JMP_INDIRECT    => self.op_jmp(),
 
-            OP_JSR_ABSOLUTE    => self.op_jsr(),
+            ops::JSR_ABSOLUTE    => self.op_jsr(),
 
-            OP_LDA_IMMEDIATE   |
-            OP_LDA_ZERO_PAGE   |
-            OP_LDA_ZERO_PAGE_X |
-            OP_LDA_ABSOLUTE    |
-            OP_LDA_ABSOLUTE_X  |
-            OP_LDA_ABSOLUTE_Y  |
-            OP_LDA_INDIRECT_X  |
-            OP_LDA_INDIRECT_Y  => self.op_lda(operand),
+            ops::LDA_IMMEDIATE   |
+            ops::LDA_ZERO_PAGE   |
+            ops::LDA_ZERO_PAGE_X |
+            ops::LDA_ABSOLUTE    |
+            ops::LDA_ABSOLUTE_X  |
+            ops::LDA_ABSOLUTE_Y  |
+            ops::LDA_INDIRECT_X  |
+            ops::LDA_INDIRECT_Y  => self.op_lda(operand),
 
-            OP_LDX_IMMEDIATE   |
-            OP_LDX_ZERO_PAGE   |
-            OP_LDX_ZERO_PAGE_Y |
-            OP_LDX_ABSOLUTE    |
-            OP_LDX_ABSOLUTE_Y  => self.op_ldx(operand),
+            ops::LDX_IMMEDIATE   |
+            ops::LDX_ZERO_PAGE   |
+            ops::LDX_ZERO_PAGE_Y |
+            ops::LDX_ABSOLUTE    |
+            ops::LDX_ABSOLUTE_Y  => self.op_ldx(operand),
 
-            OP_LDY_IMMEDIATE   |
-            OP_LDY_ZERO_PAGE   |
-            OP_LDY_ZERO_PAGE_X |
-            OP_LDY_ABSOLUTE    |
-            OP_LDY_ABSOLUTE_X  => self.op_ldy(operand),
+            ops::LDY_IMMEDIATE   |
+            ops::LDY_ZERO_PAGE   |
+            ops::LDY_ZERO_PAGE_X |
+            ops::LDY_ABSOLUTE    |
+            ops::LDY_ABSOLUTE_X  => self.op_ldy(operand),
 
-            OP_LSR_ACCUMULATOR |
-            OP_LSR_ZERO_PAGE   |
-            OP_LSR_ZERO_PAGE_X |
-            OP_LSR_ABSOLUTE    |
-            OP_LSR_ABSOLUTE_X  => self.op_lsr(operand),
+            ops::LSR_ACCUMULATOR |
+            ops::LSR_ZERO_PAGE   |
+            ops::LSR_ZERO_PAGE_X |
+            ops::LSR_ABSOLUTE    |
+            ops::LSR_ABSOLUTE_X  => self.op_lsr(operand),
 
-            OP_NOP_IMPLIED     => self.op_nop(),
+            ops::NOP_IMPLIED     => self.op_nop(),
 
-            OP_ORA_IMMEDIATE   |
-            OP_ORA_ZERO_PAGE   |
-            OP_ORA_ZERO_PAGE_X |
-            OP_ORA_ABSOLUTE    |
-            OP_ORA_ABSOLUTE_X  |
-            OP_ORA_ABSOLUTE_Y  |
-            OP_ORA_INDIRECT_X  |
-            OP_ORA_INDIRECT_Y  => self.op_ora(operand),
+            ops::ORA_IMMEDIATE   |
+            ops::ORA_ZERO_PAGE   |
+            ops::ORA_ZERO_PAGE_X |
+            ops::ORA_ABSOLUTE    |
+            ops::ORA_ABSOLUTE_X  |
+            ops::ORA_ABSOLUTE_Y  |
+            ops::ORA_INDIRECT_X  |
+            ops::ORA_INDIRECT_Y  => self.op_ora(operand),
 
-            OP_PHA_IMPLIED     => self.op_pha(),
+            ops::PHA_IMPLIED     => self.op_pha(),
 
-            OP_PHP_IMPLIED     => self.op_php(),
+            ops::PHP_IMPLIED     => self.op_php(),
 
-            OP_PLA_IMPLIED     => self.op_pla(),
+            ops::PLA_IMPLIED     => self.op_pla(),
 
-            OP_PLP_IMPLIED     => self.op_plp(),
+            ops::PLP_IMPLIED     => self.op_plp(),
 
-            OP_ROL_ACCUMULATOR |
-            OP_ROL_ZERO_PAGE   |
-            OP_ROL_ZERO_PAGE_X |
-            OP_ROL_ABSOLUTE    |
-            OP_ROL_ABSOLUTE_X  => self.op_rol(operand),
+            ops::ROL_ACCUMULATOR |
+            ops::ROL_ZERO_PAGE   |
+            ops::ROL_ZERO_PAGE_X |
+            ops::ROL_ABSOLUTE    |
+            ops::ROL_ABSOLUTE_X  => self.op_rol(operand),
 
-            OP_ROR_ACCUMULATOR |
-            OP_ROR_ZERO_PAGE   |
-            OP_ROR_ZERO_PAGE_X |
-            OP_ROR_ABSOLUTE    |
-            OP_ROR_ABSOLUTE_X  => self.op_ror(operand),
+            ops::ROR_ACCUMULATOR |
+            ops::ROR_ZERO_PAGE   |
+            ops::ROR_ZERO_PAGE_X |
+            ops::ROR_ABSOLUTE    |
+            ops::ROR_ABSOLUTE_X  => self.op_ror(operand),
 
-            OP_RTI_IMPLIED     => self.op_rti(),
+            ops::RTI_IMPLIED     => self.op_rti(),
 
-            OP_RTS_IMPLIED     => self.op_rts(),
+            ops::RTS_IMPLIED     => self.op_rts(),
 
-            OP_SBC_IMMEDIATE   |
-            OP_SBC_ZERO_PAGE   |
-            OP_SBC_ZERO_PAGE_X |
-            OP_SBC_ABSOLUTE    |
-            OP_SBC_ABSOLUTE_X  |
-            OP_SBC_ABSOLUTE_Y  |
-            OP_SBC_INDIRECT_X  |
-            OP_SBC_INDIRECT_Y  => self.op_sbc(operand),
+            ops::SBC_IMMEDIATE   |
+            ops::SBC_ZERO_PAGE   |
+            ops::SBC_ZERO_PAGE_X |
+            ops::SBC_ABSOLUTE    |
+            ops::SBC_ABSOLUTE_X  |
+            ops::SBC_ABSOLUTE_Y  |
+            ops::SBC_INDIRECT_X  |
+            ops::SBC_INDIRECT_Y  => self.op_sbc(operand),
 
-            OP_SEC_IMPLIED     => self.op_sec(),
+            ops::SEC_IMPLIED     => self.op_sec(),
 
-            OP_SED_IMPLIED     => self.op_sed(),
+            ops::SED_IMPLIED     => self.op_sed(),
 
-            OP_SEI_IMPLIED     => self.op_sei(),
+            ops::SEI_IMPLIED     => self.op_sei(),
 
-            OP_STA_ZERO_PAGE   |
-            OP_STA_ZERO_PAGE_X |
-            OP_STA_ABSOLUTE    |
-            OP_STA_ABSOLUTE_X  |
-            OP_STA_ABSOLUTE_Y  |
-            OP_STA_INDIRECT_X  |
-            OP_STA_INDIRECT_Y  => self.op_sta(),
+            ops::STA_ZERO_PAGE   |
+            ops::STA_ZERO_PAGE_X |
+            ops::STA_ABSOLUTE    |
+            ops::STA_ABSOLUTE_X  |
+            ops::STA_ABSOLUTE_Y  |
+            ops::STA_INDIRECT_X  |
+            ops::STA_INDIRECT_Y  => self.op_sta(),
 
-            OP_STX_ZERO_PAGE   |
-            OP_STX_ZERO_PAGE_Y |
-            OP_STX_ABSOLUTE    => self.op_stx(),
+            ops::STX_ZERO_PAGE   |
+            ops::STX_ZERO_PAGE_Y |
+            ops::STX_ABSOLUTE    => self.op_stx(),
 
-            OP_STY_ZERO_PAGE   |
-            OP_STY_ZERO_PAGE_X |
-            OP_STY_ABSOLUTE    => self.op_sty(),
+            ops::STY_ZERO_PAGE   |
+            ops::STY_ZERO_PAGE_X |
+            ops::STY_ABSOLUTE    => self.op_sty(),
 
-            OP_TAX_IMPLIED     => self.op_tax(),
+            ops::TAX_IMPLIED     => self.op_tax(),
 
-            OP_TAY_IMPLIED     => self.op_tay(),
+            ops::TAY_IMPLIED     => self.op_tay(),
 
-            OP_TYA_IMPLIED     => self.op_tya(),
+            ops::TYA_IMPLIED     => self.op_tya(),
 
-            OP_TSX_IMPLIED     => self.op_tsx(),
+            ops::TSX_IMPLIED     => self.op_tsx(),
 
-            OP_TXA_IMPLIED     => self.op_txa(),
+            ops::TXA_IMPLIED     => self.op_txa(),
 
-            OP_TXS_IMPLIED     => self.op_txs(),
+            ops::TXS_IMPLIED     => self.op_txs(),
 
             op => panic!("Unknown opcode: {}", op)
         }
@@ -742,141 +480,141 @@ impl<M: Memory> Mcs6502<M> {
 
     fn get_addr_mode(&self, opcode: u8) -> AddressMode {
         match opcode {
-            OP_ADC_IMMEDIATE   |
-            OP_AND_IMMEDIATE   |
-            OP_CMP_IMMEDIATE   |
-            OP_CPX_IMMEDIATE   |
-            OP_CPY_IMMEDIATE   |
-            OP_EOR_IMMEDIATE   |
-            OP_LDA_IMMEDIATE   |
-            OP_LDX_IMMEDIATE   |
-            OP_LDY_IMMEDIATE   |
-            OP_ORA_IMMEDIATE   |
-            OP_SBC_IMMEDIATE   => AddressMode::Immediate,
+            ops::ADC_IMMEDIATE   |
+            ops::AND_IMMEDIATE   |
+            ops::CMP_IMMEDIATE   |
+            ops::CPX_IMMEDIATE   |
+            ops::CPY_IMMEDIATE   |
+            ops::EOR_IMMEDIATE   |
+            ops::LDA_IMMEDIATE   |
+            ops::LDX_IMMEDIATE   |
+            ops::LDY_IMMEDIATE   |
+            ops::ORA_IMMEDIATE   |
+            ops::SBC_IMMEDIATE   => AddressMode::Immediate,
 
-            OP_ADC_ZERO_PAGE   |
-            OP_AND_ZERO_PAGE   |
-            OP_ASL_ZERO_PAGE   |
-            OP_BIT_ZERO_PAGE   |
-            OP_CMP_ZERO_PAGE   |
-            OP_CPX_ZERO_PAGE   |
-            OP_CPY_ZERO_PAGE   |
-            OP_DEC_ZERO_PAGE   |
-            OP_EOR_ZERO_PAGE   |
-            OP_INC_ZERO_PAGE   |
-            OP_LDA_ZERO_PAGE   |
-            OP_LDX_ZERO_PAGE   |
-            OP_LDY_ZERO_PAGE   |
-            OP_LSR_ZERO_PAGE   |
-            OP_ORA_ZERO_PAGE   |
-            OP_ROL_ZERO_PAGE   |
-            OP_ROR_ZERO_PAGE   |
-            OP_SBC_ZERO_PAGE   |
-            OP_STA_ZERO_PAGE   |
-            OP_STX_ZERO_PAGE   |
-            OP_STY_ZERO_PAGE   => AddressMode::ZeroPage,
+            ops::ADC_ZERO_PAGE   |
+            ops::AND_ZERO_PAGE   |
+            ops::ASL_ZERO_PAGE   |
+            ops::BIT_ZERO_PAGE   |
+            ops::CMP_ZERO_PAGE   |
+            ops::CPX_ZERO_PAGE   |
+            ops::CPY_ZERO_PAGE   |
+            ops::DEC_ZERO_PAGE   |
+            ops::EOR_ZERO_PAGE   |
+            ops::INC_ZERO_PAGE   |
+            ops::LDA_ZERO_PAGE   |
+            ops::LDX_ZERO_PAGE   |
+            ops::LDY_ZERO_PAGE   |
+            ops::LSR_ZERO_PAGE   |
+            ops::ORA_ZERO_PAGE   |
+            ops::ROL_ZERO_PAGE   |
+            ops::ROR_ZERO_PAGE   |
+            ops::SBC_ZERO_PAGE   |
+            ops::STA_ZERO_PAGE   |
+            ops::STX_ZERO_PAGE   |
+            ops::STY_ZERO_PAGE   => AddressMode::ZeroPage,
 
-            OP_ADC_ZERO_PAGE_X |
-            OP_AND_ZERO_PAGE_X |
-            OP_ASL_ZERO_PAGE_X |
-            OP_CMP_ZERO_PAGE_X |
-            OP_DEC_ZERO_PAGE_X |
-            OP_EOR_ZERO_PAGE_X |
-            OP_INC_ZERO_PAGE_X |
-            OP_LDA_ZERO_PAGE_X |
-            OP_LDY_ZERO_PAGE_X |
-            OP_LSR_ZERO_PAGE_X |
-            OP_ORA_ZERO_PAGE_X |
-            OP_ROL_ZERO_PAGE_X |
-            OP_ROR_ZERO_PAGE_X |
-            OP_SBC_ZERO_PAGE_X |
-            OP_STA_ZERO_PAGE_X |
-            OP_STY_ZERO_PAGE_X => AddressMode::ZeroPageX,
+            ops::ADC_ZERO_PAGE_X |
+            ops::AND_ZERO_PAGE_X |
+            ops::ASL_ZERO_PAGE_X |
+            ops::CMP_ZERO_PAGE_X |
+            ops::DEC_ZERO_PAGE_X |
+            ops::EOR_ZERO_PAGE_X |
+            ops::INC_ZERO_PAGE_X |
+            ops::LDA_ZERO_PAGE_X |
+            ops::LDY_ZERO_PAGE_X |
+            ops::LSR_ZERO_PAGE_X |
+            ops::ORA_ZERO_PAGE_X |
+            ops::ROL_ZERO_PAGE_X |
+            ops::ROR_ZERO_PAGE_X |
+            ops::SBC_ZERO_PAGE_X |
+            ops::STA_ZERO_PAGE_X |
+            ops::STY_ZERO_PAGE_X => AddressMode::ZeroPageX,
 
-            OP_LDX_ZERO_PAGE_Y |
-            OP_STX_ZERO_PAGE_Y => AddressMode::ZeroPageY,
+            ops::LDX_ZERO_PAGE_Y |
+            ops::STX_ZERO_PAGE_Y => AddressMode::ZeroPageY,
 
-            OP_ADC_ABSOLUTE    |
-            OP_AND_ABSOLUTE    |
-            OP_ASL_ABSOLUTE    |
-            OP_BIT_ABSOLUTE    |
-            OP_CMP_ABSOLUTE    |
-            OP_CPX_ABSOLUTE    |
-            OP_CPY_ABSOLUTE    |
-            OP_DEC_ABSOLUTE    |
-            OP_EOR_ABSOLUTE    |
-            OP_INC_ABSOLUTE    |
-            OP_JMP_ABSOLUTE    |
-            OP_JSR_ABSOLUTE    |
-            OP_LDA_ABSOLUTE    |
-            OP_LDX_ABSOLUTE    |
-            OP_LDY_ABSOLUTE    |
-            OP_LSR_ABSOLUTE    |
-            OP_ORA_ABSOLUTE    |
-            OP_ROL_ABSOLUTE    |
-            OP_ROR_ABSOLUTE    |
-            OP_SBC_ABSOLUTE    |
-            OP_STA_ABSOLUTE    |
-            OP_STX_ABSOLUTE    |
-            OP_STY_ABSOLUTE    => AddressMode::Absolute,
+            ops::ADC_ABSOLUTE    |
+            ops::AND_ABSOLUTE    |
+            ops::ASL_ABSOLUTE    |
+            ops::BIT_ABSOLUTE    |
+            ops::CMP_ABSOLUTE    |
+            ops::CPX_ABSOLUTE    |
+            ops::CPY_ABSOLUTE    |
+            ops::DEC_ABSOLUTE    |
+            ops::EOR_ABSOLUTE    |
+            ops::INC_ABSOLUTE    |
+            ops::JMP_ABSOLUTE    |
+            ops::JSR_ABSOLUTE    |
+            ops::LDA_ABSOLUTE    |
+            ops::LDX_ABSOLUTE    |
+            ops::LDY_ABSOLUTE    |
+            ops::LSR_ABSOLUTE    |
+            ops::ORA_ABSOLUTE    |
+            ops::ROL_ABSOLUTE    |
+            ops::ROR_ABSOLUTE    |
+            ops::SBC_ABSOLUTE    |
+            ops::STA_ABSOLUTE    |
+            ops::STX_ABSOLUTE    |
+            ops::STY_ABSOLUTE    => AddressMode::Absolute,
 
-            OP_ADC_ABSOLUTE_X  |
-            OP_AND_ABSOLUTE_X  |
-            OP_ASL_ABSOLUTE_X  |
-            OP_CMP_ABSOLUTE_X  |
-            OP_DEC_ABSOLUTE_X  |
-            OP_EOR_ABSOLUTE_X  |
-            OP_INC_ABSOLUTE_X  |
-            OP_LDA_ABSOLUTE_X  |
-            OP_LDY_ABSOLUTE_X  |
-            OP_LSR_ABSOLUTE_X  |
-            OP_ORA_ABSOLUTE_X  |
-            OP_ROL_ABSOLUTE_X  |
-            OP_ROR_ABSOLUTE_X  |
-            OP_SBC_ABSOLUTE_X  |
-            OP_STA_ABSOLUTE_X  => AddressMode::AbsoluteX,
+            ops::ADC_ABSOLUTE_X  |
+            ops::AND_ABSOLUTE_X  |
+            ops::ASL_ABSOLUTE_X  |
+            ops::CMP_ABSOLUTE_X  |
+            ops::DEC_ABSOLUTE_X  |
+            ops::EOR_ABSOLUTE_X  |
+            ops::INC_ABSOLUTE_X  |
+            ops::LDA_ABSOLUTE_X  |
+            ops::LDY_ABSOLUTE_X  |
+            ops::LSR_ABSOLUTE_X  |
+            ops::ORA_ABSOLUTE_X  |
+            ops::ROL_ABSOLUTE_X  |
+            ops::ROR_ABSOLUTE_X  |
+            ops::SBC_ABSOLUTE_X  |
+            ops::STA_ABSOLUTE_X  => AddressMode::AbsoluteX,
 
-            OP_ADC_ABSOLUTE_Y  |
-            OP_AND_ABSOLUTE_Y  |
-            OP_CMP_ABSOLUTE_Y  |
-            OP_EOR_ABSOLUTE_Y  |
-            OP_LDA_ABSOLUTE_Y  |
-            OP_LDX_ABSOLUTE_Y  |
-            OP_ORA_ABSOLUTE_Y  |
-            OP_SBC_ABSOLUTE_Y  |
-            OP_STA_ABSOLUTE_Y  => AddressMode::AbsoluteY,
+            ops::ADC_ABSOLUTE_Y  |
+            ops::AND_ABSOLUTE_Y  |
+            ops::CMP_ABSOLUTE_Y  |
+            ops::EOR_ABSOLUTE_Y  |
+            ops::LDA_ABSOLUTE_Y  |
+            ops::LDX_ABSOLUTE_Y  |
+            ops::ORA_ABSOLUTE_Y  |
+            ops::SBC_ABSOLUTE_Y  |
+            ops::STA_ABSOLUTE_Y  => AddressMode::AbsoluteY,
 
-            OP_ADC_INDIRECT_X  |
-            OP_AND_INDIRECT_X  |
-            OP_CMP_INDIRECT_X  |
-            OP_EOR_INDIRECT_X  |
-            OP_LDA_INDIRECT_X  |
-            OP_ORA_INDIRECT_X  |
-            OP_SBC_INDIRECT_X  |
-            OP_STA_INDIRECT_X  => AddressMode::IndirectX,
+            ops::ADC_INDIRECT_X  |
+            ops::AND_INDIRECT_X  |
+            ops::CMP_INDIRECT_X  |
+            ops::EOR_INDIRECT_X  |
+            ops::LDA_INDIRECT_X  |
+            ops::ORA_INDIRECT_X  |
+            ops::SBC_INDIRECT_X  |
+            ops::STA_INDIRECT_X  => AddressMode::IndirectX,
 
-            OP_ADC_INDIRECT_Y  |
-            OP_AND_INDIRECT_Y  |
-            OP_CMP_INDIRECT_Y  |
-            OP_EOR_INDIRECT_Y  |
-            OP_LDA_INDIRECT_Y  |
-            OP_ORA_INDIRECT_Y  |
-            OP_SBC_INDIRECT_Y  |
-            OP_STA_INDIRECT_Y  => AddressMode::IndirectY,
+            ops::ADC_INDIRECT_Y  |
+            ops::AND_INDIRECT_Y  |
+            ops::CMP_INDIRECT_Y  |
+            ops::EOR_INDIRECT_Y  |
+            ops::LDA_INDIRECT_Y  |
+            ops::ORA_INDIRECT_Y  |
+            ops::SBC_INDIRECT_Y  |
+            ops::STA_INDIRECT_Y  => AddressMode::IndirectY,
 
-            OP_BCC_RELATIVE    |
-            OP_BCS_RELATIVE    |
-            OP_BEQ_RELATIVE    |
-            OP_BMI_RELATIVE    |
-            OP_BNE_RELATIVE    |
-            OP_BPL_RELATIVE    |
-            OP_BVC_RELATIVE    |
-            OP_BVS_RELATIVE    => AddressMode::Relative,
+            ops::BCC_RELATIVE    |
+            ops::BCS_RELATIVE    |
+            ops::BEQ_RELATIVE    |
+            ops::BMI_RELATIVE    |
+            ops::BNE_RELATIVE    |
+            ops::BPL_RELATIVE    |
+            ops::BVC_RELATIVE    |
+            ops::BVS_RELATIVE    => AddressMode::Relative,
 
-            OP_ASL_ACCUMULATOR |
-            OP_LSR_ACCUMULATOR |
-            OP_ROL_ACCUMULATOR |
-            OP_ROR_ACCUMULATOR => AddressMode::Accumulator,
+            ops::ASL_ACCUMULATOR |
+            ops::LSR_ACCUMULATOR |
+            ops::ROL_ACCUMULATOR |
+            ops::ROR_ACCUMULATOR => AddressMode::Accumulator,
 
             _ => AddressMode::None,
         }
@@ -1333,6 +1071,7 @@ mod tests {
     use cpus::Cpu;
     use cpus::mcs6502::Mcs6502;
     use cpus::mcs6502;
+    use inst::mcs6502::ops;
 
     #[test]
     #[ignore]
@@ -1380,17 +1119,17 @@ mod tests {
 
     #[test]
     fn op_bcc() {
-        aux_branch(mcs6502::OP_BCC_RELATIVE, mcs6502::STS_CAR_MASK, false);
+        aux_branch(ops::BCC_RELATIVE, mcs6502::STS_CAR_MASK, false);
     }
 
     #[test]
     fn op_bcs() {
-        aux_branch(mcs6502::OP_BCS_RELATIVE, mcs6502::STS_CAR_MASK, true);
+        aux_branch(ops::BCS_RELATIVE, mcs6502::STS_CAR_MASK, true);
     }
 
     #[test]
     fn op_beq() {
-        aux_branch(mcs6502::OP_BEQ_RELATIVE, mcs6502::STS_ZER_MASK, true);
+        aux_branch(ops::BEQ_RELATIVE, mcs6502::STS_ZER_MASK, true);
     }
 
     #[test]
@@ -1401,17 +1140,17 @@ mod tests {
 
     #[test]
     fn op_bmi() {
-        aux_branch(mcs6502::OP_BMI_RELATIVE, mcs6502::STS_NEG_MASK, true);
+        aux_branch(ops::BMI_RELATIVE, mcs6502::STS_NEG_MASK, true);
     }
 
     #[test]
     fn op_bne() {
-        aux_branch(mcs6502::OP_BNE_RELATIVE, mcs6502::STS_ZER_MASK, false);
+        aux_branch(ops::BNE_RELATIVE, mcs6502::STS_ZER_MASK, false);
     }
 
     #[test]
     fn op_bpl() {
-        aux_branch(mcs6502::OP_BPL_RELATIVE, mcs6502::STS_NEG_MASK, false);
+        aux_branch(ops::BPL_RELATIVE, mcs6502::STS_NEG_MASK, false);
     }
 
     #[test]
@@ -1422,12 +1161,12 @@ mod tests {
 
     #[test]
     fn op_bvc() {
-        aux_branch(mcs6502::OP_BVC_RELATIVE, mcs6502::STS_OVF_MASK, false);
+        aux_branch(ops::BVC_RELATIVE, mcs6502::STS_OVF_MASK, false);
     }
 
     #[test]
     fn op_bvs() {
-        aux_branch(mcs6502::OP_BVS_RELATIVE, mcs6502::STS_OVF_MASK, true);
+        aux_branch(ops::BVS_RELATIVE, mcs6502::STS_OVF_MASK, true);
     }
 
     fn aux_clear(opcode: u8, flag: u8) {
@@ -1445,22 +1184,22 @@ mod tests {
 
     #[test]
     fn op_clc() {
-        aux_clear(mcs6502::OP_CLC_IMPLIED, mcs6502::STS_CAR_MASK);
+        aux_clear(ops::CLC_IMPLIED, mcs6502::STS_CAR_MASK);
     }
 
     #[test]
     fn op_cld() {
-        aux_clear(mcs6502::OP_CLD_IMPLIED, mcs6502::STS_DEC_MASK);
+        aux_clear(ops::CLD_IMPLIED, mcs6502::STS_DEC_MASK);
     }
 
     #[test]
     fn op_cli() {
-        aux_clear(mcs6502::OP_CLI_IMPLIED, mcs6502::STS_INT_MASK);
+        aux_clear(ops::CLI_IMPLIED, mcs6502::STS_INT_MASK);
     }
 
     #[test]
     fn op_clv() {
-        aux_clear(mcs6502::OP_CLV_IMPLIED, mcs6502::STS_OVF_MASK);
+        aux_clear(ops::CLV_IMPLIED, mcs6502::STS_OVF_MASK);
     }
 
     #[test]
@@ -1485,7 +1224,7 @@ mod tests {
     fn op_dec() {
         // TODO: Test multiple addressing modes.
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_DEC_ABSOLUTE);
+        instructions.push(ops::DEC_ABSOLUTE);
         instructions.push(0x0A);
         instructions.push(0x00);
 
@@ -1501,7 +1240,7 @@ mod tests {
     #[test]
     fn op_dex() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_DEX_IMPLIED);
+        instructions.push(ops::DEX_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1515,7 +1254,7 @@ mod tests {
     #[test]
     fn op_dey() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_DEY_IMPLIED);
+        instructions.push(ops::DEY_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1536,7 +1275,7 @@ mod tests {
     fn op_inc() {
         // TODO: Test multiple addressing modes.
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_INC_ABSOLUTE);
+        instructions.push(ops::INC_ABSOLUTE);
         instructions.push(0x0A);
         instructions.push(0x00);
 
@@ -1552,7 +1291,7 @@ mod tests {
     #[test]
     fn op_inx() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_INX_IMPLIED);
+        instructions.push(ops::INX_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1566,7 +1305,7 @@ mod tests {
     #[test]
     fn op_iny() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_INY_IMPLIED);
+        instructions.push(ops::INY_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1581,7 +1320,7 @@ mod tests {
     fn op_jmp() {
         // TODO: Test indirect when implemented.
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_JMP_ABSOLUTE);
+        instructions.push(ops::JMP_ABSOLUTE);
         instructions.push(0xA0);
         instructions.push(0x01);
 
@@ -1606,9 +1345,9 @@ mod tests {
     fn op_lda() {
         // TODO: Test different address modes.
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_LDA_IMMEDIATE);
+        instructions.push(ops::LDA_IMMEDIATE);
         instructions.push(0xAB);
-        instructions.push(mcs6502::OP_LDA_ABSOLUTE);
+        instructions.push(ops::LDA_ABSOLUTE);
         instructions.push(0x34);
         instructions.push(0x12);
 
@@ -1630,9 +1369,9 @@ mod tests {
     #[test]
     fn op_ldx() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_LDX_IMMEDIATE);
+        instructions.push(ops::LDX_IMMEDIATE);
         instructions.push(0xAB);
-        instructions.push(mcs6502::OP_LDX_ABSOLUTE);
+        instructions.push(ops::LDX_ABSOLUTE);
         instructions.push(0x34);
         instructions.push(0x12);
 
@@ -1654,9 +1393,9 @@ mod tests {
     #[test]
     fn op_ldy() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_LDY_IMMEDIATE);
+        instructions.push(ops::LDY_IMMEDIATE);
         instructions.push(0xAB);
-        instructions.push(mcs6502::OP_LDY_ABSOLUTE);
+        instructions.push(ops::LDY_ABSOLUTE);
         instructions.push(0x34);
         instructions.push(0x12);
 
@@ -1695,7 +1434,7 @@ mod tests {
     #[test]
     fn op_pha() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_PHA_IMPLIED);
+        instructions.push(ops::PHA_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1714,7 +1453,7 @@ mod tests {
     #[test]
     fn op_php() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_PHP_IMPLIED);
+        instructions.push(ops::PHP_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1744,7 +1483,7 @@ mod tests {
     #[test]
     fn op_pla() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_PLA_IMPLIED);
+        instructions.push(ops::PLA_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1763,7 +1502,7 @@ mod tests {
     #[test]
     fn op_plp() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_PLP_IMPLIED);
+        instructions.push(ops::PLP_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1834,23 +1573,23 @@ mod tests {
 
     #[test]
     fn op_sec() {
-        aux_set(mcs6502::OP_SEC_IMPLIED, mcs6502::STS_CAR_MASK);
+        aux_set(ops::SEC_IMPLIED, mcs6502::STS_CAR_MASK);
     }
 
     #[test]
     fn op_sed() {
-        aux_set(mcs6502::OP_SED_IMPLIED, mcs6502::STS_DEC_MASK);
+        aux_set(ops::SED_IMPLIED, mcs6502::STS_DEC_MASK);
     }
 
     #[test]
     fn op_sei() {
-        aux_set(mcs6502::OP_SEI_IMPLIED, mcs6502::STS_INT_MASK);
+        aux_set(ops::SEI_IMPLIED, mcs6502::STS_INT_MASK);
     }
 
     #[test]
     fn op_sta() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_STA_ZERO_PAGE);
+        instructions.push(ops::STA_ZERO_PAGE);
         instructions.push(0x35);
 
         let cart = Rom8b::from_vec(instructions);
@@ -1867,7 +1606,7 @@ mod tests {
     #[test]
     fn op_stx() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_STX_ZERO_PAGE_Y);
+        instructions.push(ops::STX_ZERO_PAGE_Y);
         instructions.push(0x35);
 
         let cart = Rom8b::from_vec(instructions);
@@ -1886,7 +1625,7 @@ mod tests {
     #[test]
     fn op_sty() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_STY_ZERO_PAGE_X);
+        instructions.push(ops::STY_ZERO_PAGE_X);
         instructions.push(0x35);
 
         let cart = Rom8b::from_vec(instructions);
@@ -1905,7 +1644,7 @@ mod tests {
     #[test]
     fn op_tax() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_TAX_IMPLIED);
+        instructions.push(ops::TAX_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1920,7 +1659,7 @@ mod tests {
     #[test]
     fn op_tay() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_TAY_IMPLIED);
+        instructions.push(ops::TAY_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1935,7 +1674,7 @@ mod tests {
     #[test]
     fn op_tya() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_TYA_IMPLIED);
+        instructions.push(ops::TYA_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1950,7 +1689,7 @@ mod tests {
     #[test]
     fn op_tsx() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_TSX_IMPLIED);
+        instructions.push(ops::TSX_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1964,7 +1703,7 @@ mod tests {
     #[test]
     fn op_txa() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_TXA_IMPLIED);
+        instructions.push(ops::TXA_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
@@ -1979,7 +1718,7 @@ mod tests {
     #[test]
     fn op_txs() {
         let mut instructions: Vec<u8> = Vec::new();
-        instructions.push(mcs6502::OP_TXS_IMPLIED);
+        instructions.push(ops::TXS_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
         let mut cpu = Mcs6502::new(Ram8b64kB::new());
