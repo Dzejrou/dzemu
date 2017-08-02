@@ -282,6 +282,12 @@ const PC_INIT_ADDRESS:    usize = 0xFFFC;
 // where the rom gets mapped.
 const ROM_MAP_ADDRESS:    usize = 0x0000;
 
+// Base address of the stack (higher byte).
+const STACK_BASE_ADDRESS: usize = 0x0100;
+
+// Starting address of the stack (lower byte).
+const STACK_START_VALUE:  u8 = 0xFF;
+
 // Processor status register fields.
 // 5 is expansion bit.
 const STS_CAR_MASK:    u8 = 1 << 0;
@@ -562,7 +568,7 @@ impl<M: Memory> Mcs6502<M> {
         Mcs6502 {
             ram,
             pc: 0,
-            sp: 0u8,
+            sp: STACK_START_VALUE,
             idx_x: 0u8,
             idx_y: 0u8,
             accu: 0u8,
@@ -584,13 +590,19 @@ impl<M: Memory> Mcs6502<M> {
             }
 
             AddressMode::ZeroPageX   => {
-                let addr = self.ram.read_u8(self.pc + 1) as usize;
-                self.ram.read_u8(addr + self.idx_x as usize)
+                let mut addr = self.ram.read_u8(self.pc + 1) as usize;
+                let offs = self.idx_x as i8;
+                addr = ((addr as i8) + offs) as usize;
+
+                self.ram.read_u8(addr)
             }
 
             AddressMode::ZeroPageY   => {
-                let addr = self.ram.read_u8(self.pc + 1) as usize;
-                self.ram.read_u8(addr + self.idx_y as usize)
+                let mut addr = self.ram.read_u8(self.pc + 1) as usize;
+                let offs = self.idx_y as i8;
+                addr = ((addr as i8) + offs) as usize;
+
+                self.ram.read_u8(addr)
             }
 
             AddressMode::Absolute    => {
@@ -599,13 +611,19 @@ impl<M: Memory> Mcs6502<M> {
             }
 
             AddressMode::AbsoluteX   => {
-                let addr = self.ram.read_u16(self.pc + 1) as usize;
-                self.ram.read_u8(addr + self.idx_x as usize)
+                let mut addr = self.ram.read_u16(self.pc + 1) as usize;
+                let offs = self.idx_x as i8;
+                addr = ((addr as i8) + offs) as usize;
+
+                self.ram.read_u8(addr)
             }
 
             AddressMode::AbsoluteY   => {
-                let addr = self.ram.read_u16(self.pc + 1) as usize;
-                self.ram.read_u8(addr + self.idx_y as usize)
+                let mut addr = self.ram.read_u16(self.pc + 1) as usize;
+                let offs = self.idx_y as i8;
+                addr = ((addr as i8) + offs) as usize;
+
+                self.ram.read_u8(addr)
             }
 
             AddressMode::IndirectX   => {
@@ -650,13 +668,19 @@ impl<M: Memory> Mcs6502<M> {
             }
 
             AddressMode::ZeroPageX   => {
-                let addr = self.ram.read_u8(self.pc + 1) as usize;
-                self.ram.write_u8(addr + self.idx_x as usize, operand);
+                let mut addr = self.ram.read_u8(self.pc + 1) as usize;
+                let offs = self.idx_x as i8;
+                addr = ((addr as i8) + offs) as usize;
+
+                self.ram.write_u8(addr, operand);
             }
 
             AddressMode::ZeroPageY   => {
-                let addr = self.ram.read_u8(self.pc + 1) as usize;
-                self.ram.write_u8(addr + self.idx_y as usize, operand);
+                let mut addr = self.ram.read_u8(self.pc + 1) as usize;
+                let offs = self.idx_y as i8;
+                addr = ((addr as i8) + offs) as usize;
+
+                self.ram.write_u8(addr, operand);
             }
 
             AddressMode::Absolute    => {
@@ -665,16 +689,23 @@ impl<M: Memory> Mcs6502<M> {
             }
 
             AddressMode::AbsoluteX   => {
-                let addr = self.ram.read_u16(self.pc + 1) as usize;
-                self.ram.write_u8(addr + self.idx_x as usize, operand);
+                let mut addr = self.ram.read_u16(self.pc + 1) as usize;
+                let offs = self.idx_x as i8;
+                addr = ((addr as i8) + offs) as usize;
+
+                self.ram.write_u8(addr, operand);
             }
 
             AddressMode::AbsoluteY   => {
-                let addr = self.ram.read_u16(self.pc + 1) as usize;
-                self.ram.write_u8(addr + self.idx_y as usize, operand);
+                let mut addr = self.ram.read_u16(self.pc + 1) as usize;
+                let offs = self.idx_y as i8;
+                addr = ((addr as i8) + offs) as usize;
+
+                self.ram.write_u8(addr, operand);
             }
 
             AddressMode::IndirectX   => {
+                // TODO: Fix indirect handling of idx as signed!
                 let mut ptr = (self.ram.read_u8(self.pc + 1) + self.idx_x) as usize;
                 ptr = ptr % 0xFF;
 
@@ -705,8 +736,8 @@ impl<M: Memory> Mcs6502<M> {
         }
     }
 
-    fn get_sp(&self) -> usize {
-        (self.sp as u16 + 0x0100u16) as usize
+    fn sp(&self) -> usize {
+        (self.sp as usize) + STACK_BASE_ADDRESS
     }
 
     fn get_addr_mode(&self, opcode: u8) -> AddressMode {
@@ -864,6 +895,14 @@ impl<M: Memory> Mcs6502<M> {
 
     fn jump(&mut self, addr: usize) {
         self.pc = addr + ROM_MAP_ADDRESS;
+    }
+
+    fn sp_dec(&mut self) {
+        self.sp = self.sp.wrapping_sub(1);
+    }
+
+    fn sp_inc(&mut self) {
+        self.sp = self.sp.wrapping_add(1);
     }
 
     fn pc(&self) -> usize {
@@ -1084,9 +1123,10 @@ impl<M: Memory> Mcs6502<M> {
         // Store pc.
         // TODO: SP starts at 0x01FF, but atari2600
         //       has only 128 bytes of memory?
-        let sp_addr = self.get_sp();
+        let sp_addr = self.sp();
         self.ram.write_u16(sp_addr, self.pc as u16);
-        self.sp -= 2;
+        self.sp_dec();
+        self.sp_dec();
 
         self.pc = addr;
     }
@@ -1132,26 +1172,26 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_pha(&mut self) {
-        let addr = self.get_sp();
+        let addr = self.sp();
         self.ram.write_u8(addr, self.accu);
-        self.sp -= 1;
+        self.sp_dec();
     }
 
     fn op_php(&mut self) {
-        let addr = self.get_sp();
+        let addr = self.sp();
         self.ram.write_u8(addr, self.status);
-        self.sp -= 1;
+        self.sp_dec();
     }
 
     fn op_pla(&mut self) {
-        self.sp += 1;
-        let addr = self.get_sp();
+        self.sp_inc();
+        let addr = self.sp();
         self.accu = self.ram.read_u8(addr);
     }
 
     fn op_plp(&mut self) {
-        self.sp += 1;
-        let addr = self.get_sp();
+        self.sp_inc();
+        let addr = self.sp();
         self.status = self.ram.read_u8(addr);
     }
 
@@ -1189,8 +1229,9 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_rts(&mut self) {
-        self.sp += 2;
-        self.pc = self.ram.read_u16(self.get_sp()) as usize;
+        self.sp_inc();
+        self.sp_inc();
+        self.pc = self.ram.read_u16(self.sp()) as usize;
     }
 
     fn op_sbc(&mut self, operand: u8) {
@@ -1550,7 +1591,6 @@ mod tests {
         cpu.boot(&cart);
         let target = 0x01A0;
 
-        // Absolute jump.
         cpu.execute();
         assert_eq!(cpu.addr_mode, mcs6502::AddressMode::Absolute);
         assert_eq!(cpu.pc(), target);
@@ -1563,21 +1603,76 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_lda() {
-        // TODO:
+        // TODO: Test different address modes.
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_LDA_IMMEDIATE);
+        instructions.push(0xAB);
+        instructions.push(mcs6502::OP_LDA_ABSOLUTE);
+        instructions.push(0x34);
+        instructions.push(0x12);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        let mut target = 0xAB;
+
+        cpu.execute();
+        assert_eq!(cpu.accu, target);
+
+        target = 0xFC;
+        cpu.memory().write_u8(0x1234, target);
+        cpu.execute();
+        assert_eq!(cpu.accu, target);
     }
 
     #[test]
-    #[ignore]
     fn op_ldx() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_LDX_IMMEDIATE);
+        instructions.push(0xAB);
+        instructions.push(mcs6502::OP_LDX_ABSOLUTE);
+        instructions.push(0x34);
+        instructions.push(0x12);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        let mut target = 0xAB;
+
+        cpu.execute();
+        assert_eq!(cpu.idx_x, target);
+
+        target = 0xFC;
+        cpu.memory().write_u8(0x1234, target);
+        cpu.execute();
+        assert_eq!(cpu.idx_x, target);
     }
 
     #[test]
-    #[ignore]
     fn op_ldy() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_LDY_IMMEDIATE);
+        instructions.push(0xAB);
+        instructions.push(mcs6502::OP_LDY_ABSOLUTE);
+        instructions.push(0x34);
+        instructions.push(0x12);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        let mut target = 0xAB;
+
+        cpu.execute();
+        assert_eq!(cpu.idx_y, target);
+
+        target = 0xFC;
+        cpu.memory().write_u8(0x1234, target);
+        cpu.execute();
+        assert_eq!(cpu.idx_y, target);
     }
 
     #[test]
@@ -1587,7 +1682,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_nop() {
         assert!(true);
     }
@@ -1599,27 +1693,100 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_pha() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_PHA_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+
+        cpu.accu = 0xAF;
+        cpu.execute();
+
+        cpu.sp_inc();
+        let sp = cpu.sp();
+        let stack_top = cpu.memory().read_u8(sp);
+        assert_eq!(stack_top, cpu.accu);
     }
 
     #[test]
-    #[ignore]
     fn op_php() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_PHP_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+
+        cpu.set_flag(true, mcs6502::STS_CAR_MASK);
+        cpu.set_flag(true, mcs6502::STS_NEG_MASK);
+        cpu.set_flag(false, mcs6502::STS_ZER_MASK);
+        cpu.set_flag(true, mcs6502::STS_DEC_MASK);
+        cpu.set_flag(false, mcs6502::STS_INT_MASK);
+        cpu.set_flag(true, mcs6502::STS_OVF_MASK);
+        cpu.execute();
+
+        cpu.sp_inc();
+        let sp = cpu.sp();
+        let stack_top = cpu.memory().read_u8(sp);
+
+        assert!((stack_top & mcs6502::STS_CAR_MASK) > 0);
+        assert!((stack_top & mcs6502::STS_NEG_MASK) > 0);
+        assert!((stack_top & mcs6502::STS_ZER_MASK) == 0);
+        assert!((stack_top & mcs6502::STS_DEC_MASK) > 0);
+        assert!((stack_top & mcs6502::STS_INT_MASK) == 0);
+        assert!((stack_top & mcs6502::STS_OVF_MASK) > 0);
     }
 
     #[test]
-    #[ignore]
     fn op_pla() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_PLA_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+
+        let sp = cpu.sp();
+        cpu.memory().write_u8(sp, 0xFA);
+        cpu.sp_dec();
+
+        cpu.execute();
+
+        assert_eq!(cpu.accu, 0xFA);
     }
 
     #[test]
-    #[ignore]
     fn op_plp() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_PLP_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+
+        let mut state = 0u8;
+        state |= mcs6502::STS_CAR_MASK;
+        state |= mcs6502::STS_INT_MASK;
+        state |= mcs6502::STS_NEG_MASK;
+
+        let sp = cpu.sp();
+        cpu.memory().write_u8(sp, state);
+        cpu.sp_dec();
+
+        cpu.execute();
+
+        assert!(cpu.get_flag(mcs6502::STS_CAR_MASK));
+        assert!(cpu.get_flag(mcs6502::STS_NEG_MASK));
+        assert!(!cpu.get_flag(mcs6502::STS_ZER_MASK));
+        assert!(!cpu.get_flag(mcs6502::STS_DEC_MASK));
+        assert!(cpu.get_flag(mcs6502::STS_INT_MASK));
+        assert!(!cpu.get_flag(mcs6502::STS_OVF_MASK));
     }
 
     #[test]
@@ -1681,56 +1848,146 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_sta() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_STA_ZERO_PAGE);
+        instructions.push(0x35);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.accu = 0xAC;
+
+        cpu.execute();
+        let res = cpu.memory().read_u8(0x35);
+        assert_eq!(cpu.accu, res);
     }
 
     #[test]
-    #[ignore]
     fn op_stx() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_STX_ZERO_PAGE_Y);
+        instructions.push(0x35);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.idx_x = 0xAC;
+        cpu.idx_y = 0x05;
+
+        cpu.execute();
+        let addr: usize = 0x35 + 0x05;
+        let res = cpu.memory().read_u8(addr);
+        assert_eq!(cpu.idx_x, res);
     }
 
     #[test]
-    #[ignore]
     fn op_sty() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_STY_ZERO_PAGE_X);
+        instructions.push(0x35);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.idx_y = 0xAC;
+        cpu.idx_x = 0xFB; // -5
+
+        cpu.execute();
+        let addr: usize = 0x30;
+        let res = cpu.memory().read_u8(addr);
+        assert_eq!(cpu.idx_y, res);
     }
 
     #[test]
-    #[ignore]
     fn op_tax() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_TAX_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.accu = 0xC5;
+
+        cpu.execute();
+        assert_eq!(cpu.idx_x, cpu.accu);
     }
 
     #[test]
-    #[ignore]
     fn op_tay() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_TAY_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.accu = 0xC5;
+
+        cpu.execute();
+        assert_eq!(cpu.idx_y, cpu.accu);
     }
 
     #[test]
-    #[ignore]
     fn op_tya() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_TYA_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.idx_y = 0xC5;
+
+        cpu.execute();
+        assert_eq!(cpu.accu, cpu.idx_y);
     }
 
     #[test]
-    #[ignore]
     fn op_tsx() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_TSX_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+
+        cpu.execute();
+        assert_eq!(cpu.idx_x, cpu.sp);
     }
 
     #[test]
-    #[ignore]
     fn op_txa() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_TXA_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.idx_x = 0xC5;
+
+        cpu.execute();
+        assert_eq!(cpu.accu, cpu.idx_x);
     }
 
     #[test]
-    #[ignore]
     fn op_txs() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_TXS_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.idx_x = 0xC5;
+
+        cpu.execute();
+        assert_eq!(cpu.sp, cpu.idx_x);
     }
 }
