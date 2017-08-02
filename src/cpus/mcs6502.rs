@@ -1597,22 +1597,32 @@ mod tests {
         // TODO:
     }
 
+    fn aux_set(opcode: u8, flag: u8) {
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(opcode);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.set_flag(false, flag);
+        cpu.execute();
+        assert!(cpu.get_flag(flag));
+    }
+
     #[test]
-    #[ignore]
     fn op_sec() {
-        // TODO:
+        aux_set(mcs6502::OP_SEC_IMPLIED, mcs6502::STS_CAR_MASK);
     }
 
     #[test]
-    #[ignore]
     fn op_sed() {
-        // TODO:
+        aux_set(mcs6502::OP_SED_IMPLIED, mcs6502::STS_DEC_MASK);
     }
 
     #[test]
-    #[ignore]
     fn op_sei() {
-        // TODO:
+        aux_set(mcs6502::OP_SEI_IMPLIED, mcs6502::STS_INT_MASK);
     }
 
     #[test]
