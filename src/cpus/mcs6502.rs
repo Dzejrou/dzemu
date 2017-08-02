@@ -283,7 +283,7 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
             op => panic!("Unknown opcode: {}", op)
         }
 
-        self.pc += self.pc_offset();
+        self.pc += addr::pc_offset(&self.addr_mode);
     }
 }
 
@@ -450,16 +450,6 @@ impl<M: Memory> Mcs6502<M> {
         }
     }
 
-    fn pc_offset(&self) -> usize {
-        match self.addr_mode {
-            AddressMode::Absolute  |
-            AddressMode::AbsoluteX |
-            AddressMode::AbsoluteY => 3,
-            AddressMode::None      => 1,
-            _                      => 2,
-        }
-    }
-
     fn sp(&self) -> usize {
         (self.sp as usize) + STACK_BASE_ADDRESS
     }
@@ -469,7 +459,7 @@ impl<M: Memory> Mcs6502<M> {
             let soff = offset as i8;
             let mut spc = self.pc as isize;
             spc += soff as isize;
-            spc -= self.pc_offset() as isize;
+            spc -= addr::pc_offset(&self.addr_mode) as isize;
 
             self.pc = spc as usize;
         }
@@ -683,7 +673,7 @@ impl<M: Memory> Mcs6502<M> {
     fn op_jmp(&mut self) {
         match self.addr_mode {
             AddressMode::Absolute => {
-                let offs = self.pc_offset();
+                let offs = addr::pc_offset(&self.addr_mode);
                 let addr = self.ram.read_u16(self.pc + 1) as usize;
                 self.jump(addr - offs);
             }

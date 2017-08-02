@@ -18,6 +18,16 @@ pub mod addr {
     use inst::mcs6502::ops;
     use inst::mcs6502::AddressMode;
 
+    pub fn pc_offset(mode: &AddressMode) -> usize {
+        match *mode {
+            AddressMode::Absolute  |
+            AddressMode::AbsoluteX |
+            AddressMode::AbsoluteY => 3,
+            AddressMode::None      => 1,
+            _                      => 2,
+        }
+    }
+
     pub fn get_addr_mode(opcode: u8) -> AddressMode {
         match opcode {
             ops::ADC_IMMEDIATE   |
