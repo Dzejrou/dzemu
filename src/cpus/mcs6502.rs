@@ -320,8 +320,8 @@ pub struct Mcs6502<M: Memory> {
 }
 
 impl<M: Memory> Cpu<M> for Mcs6502<M> {
-    fn memory(&self) -> &M {
-        &self.ram
+    fn memory(&mut self) -> &mut M {
+        &mut self.ram
     }
 
     fn boot(&mut self, cart : &Memory) {
@@ -1286,6 +1286,7 @@ impl<M: Memory> Mcs6502<M> {
 
 #[cfg(test)]
 mod tests {
+    use mems::Memory;
     use mems::rom::Rom8b;
     use mems::ram::Ram8b64kB;
     use cpus::Cpu;
@@ -1464,21 +1465,48 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_inc() {
-        // TODO:
+        // TODO: Test multiple addressing modes.
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_INC_ABSOLUTE);
+        instructions.push(0x0A);
+        instructions.push(0x00);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.memory().write_u8(0x000A, 5);
+        cpu.execute();
+        assert_eq!(cpu.memory().read_u8(0x000A), 6);
     }
 
     #[test]
-    #[ignore]
     fn op_inx() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_INX_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.idx_x = 0x0A;
+        cpu.execute();
+        assert_eq!(cpu.idx_x, 0x0B);
     }
 
     #[test]
-    #[ignore]
     fn op_iny() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(mcs6502::OP_INY_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.idx_y = 0x0A;
+        cpu.execute();
+        assert_eq!(cpu.idx_y, 0x0B);
     }
 
     #[test]
