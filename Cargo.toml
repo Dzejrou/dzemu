@@ -3,4 +3,12 @@ name = "dzemu"
 version = "0.1.0"
 authors = ["Dzejrou <dzejrou@gmail.com>"]
 
+[[bin]]
+name = "dzemu"
+path = "src/dzemu.rs"
+
+[[bin]]
+name = "dzemu_asm"
+path = "src/dzemu_asm.rs"
+
 [dependencies]
