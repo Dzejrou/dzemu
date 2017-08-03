@@ -1489,7 +1489,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_ror() {
         // TODO: Test variant with carry clear.
         let mut instructions: Vec<u8> = Vec::new();
