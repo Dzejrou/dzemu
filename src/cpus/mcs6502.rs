@@ -729,8 +729,15 @@ impl<M: Memory> Mcs6502<M> {
         self.set_flag(idx_y == 0, STS_ZER_MASK);
     }
 
-    fn op_lsr(&mut self, operand: u8) {
-        // TODO: !
+    fn op_lsr(&mut self, mut operand: u8) {
+        self.set_flag((operand & 1) == 1, STS_CAR_MASK);
+
+        operand >>= 1;
+
+        self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
+        self.set_flag(operand == 0, STS_ZER_MASK);
+
+        self.set_operand(operand);
     }
 
     fn op_nop(&mut self) {
@@ -774,9 +781,7 @@ impl<M: Memory> Mcs6502<M> {
         self.set_flag((operand >> 7) == 1, STS_CAR_MASK);
 
         operand <<= 1;
-        if self.get_flag(STS_CAR_MASK) {
-            operand |= input_carry;
-        }
+        operand |= input_carry;
 
         self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
         self.set_flag(operand == 0, STS_ZER_MASK);
@@ -950,9 +955,30 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_asl() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::ASL_ZERO_PAGE);
+        instructions.push(0x0A);
+        instructions.push(ops::ASL_ACCUMULATOR);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+
+        let mut orig = 0xFF;
+        cpu.memory().write_u8(0x0A, orig);
+        let mut target = orig << 1;
+        cpu.execute();
+        assert_eq!(cpu.memory().read_u8(0x0A), target);
+        assert_eq!((orig & (1 << 7)) > 0, cpu.get_flag(mcs6502::STS_CAR_MASK));
+
+        orig = 0x07;
+        cpu.accu = orig;
+        target = cpu.accu << 1;
+        cpu.execute();
+        assert_eq!(cpu.accu, target);
+        assert_eq!((orig & (1 << 7)) > 0, cpu.get_flag(mcs6502::STS_CAR_MASK));
     }
 
     fn aux_branch(opcode: u8, flag: u8, cond: bool) {
@@ -1291,9 +1317,30 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_lsr() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::LSR_ZERO_PAGE);
+        instructions.push(0x0A);
+        instructions.push(ops::LSR_ACCUMULATOR);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+
+        let mut orig = 0xF3;
+        cpu.memory().write_u8(0x0A, orig);
+        let mut target = orig >> 1;
+        cpu.execute();
+        assert_eq!(cpu.memory().read_u8(0x0A), target);
+        assert_eq!((orig & 1) == 1, cpu.get_flag(mcs6502::STS_CAR_MASK));
+
+        orig = 0x0A;
+        cpu.accu = orig;
+        target = cpu.accu >> 1;
+        cpu.execute();
+        assert_eq!(cpu.accu, target);
+        assert_eq!((orig & 1) == 1, cpu.get_flag(mcs6502::STS_CAR_MASK));
     }
 
     #[test]
@@ -1417,15 +1464,54 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_rol() {
-        // TODO:
+        // TODO: Test variant with carry clear.
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::ROL_ZERO_PAGE);
+        instructions.push(0x0A);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.set_flag(true, mcs6502::STS_CAR_MASK);
+
+        let mut orig = 0b1011;
+        cpu.memory().write_u8(0x0A, orig);
+        let mut target = (orig << 1);
+        if cpu.get_flag(mcs6502::STS_CAR_MASK) {
+            target |= 1;
+        }
+
+        cpu.execute();
+        assert_eq!(cpu.memory().read_u8(0x0A), target);
+        assert_eq!((orig & (1 << 7)) > 0, cpu.get_flag(mcs6502::STS_CAR_MASK));
     }
 
     #[test]
     #[ignore]
     fn op_ror() {
-        // TODO:
+        // TODO: Test variant with carry clear.
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::ROR_ZERO_PAGE);
+        instructions.push(0x0A);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.set_flag(true, mcs6502::STS_CAR_MASK);
+
+        let mut orig = 0b1011;
+        cpu.memory().write_u8(0x0A, orig);
+        let mut target = (orig >> 1);
+        if cpu.get_flag(mcs6502::STS_CAR_MASK) {
+            target |= (1 << 7);
+        }
+
+        cpu.execute();
+        assert_eq!(cpu.memory().read_u8(0x0A), target);
+        assert_eq!((orig & 1) == 1, cpu.get_flag(mcs6502::STS_CAR_MASK));
     }
 
     #[test]
