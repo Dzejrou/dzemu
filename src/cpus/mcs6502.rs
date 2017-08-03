@@ -498,11 +498,13 @@ impl<M: Memory> Mcs6502<M> {
 
             let signed = result as i16;
             self.set_flag(signed > 127 || signed < -128, STS_OVF_MASK);
+
+            self.accu = result;
         }
 
         let result = self.accu;
         self.set_flag(result == 0, STS_ZER_MASK);
-        self.set_flag((result as i8) < 0, STS_ZER_MASK);
+        self.set_flag((result as i8) < 0, STS_NEG_MASK);
     }
 
     fn op_and(&mut self, operand: u8) {
@@ -909,15 +911,42 @@ mod tests {
     use inst::mcs6502::AddressMode;
 
     #[test]
-    #[ignore]
     fn op_adc() {
-        // TODO:
+        // TODO: Test decimal addition when it's implemented.
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::ADC_ZERO_PAGE);
+        instructions.push(0x0A);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.set_flag(true, mcs6502::STS_NEG_MASK);
+        cpu.accu = 0x05;
+        cpu.memory().write_u8(0x0A, 0x02);
+
+        let target = 0x05 + 0x02;
+        cpu.execute();
+        assert_eq!(cpu.accu, target);
+        assert!(!cpu.get_flag(mcs6502::STS_NEG_MASK));
     }
 
     #[test]
-    #[ignore]
     fn op_and() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::AND_ZERO_PAGE);
+        instructions.push(0x0A);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.accu = 0xD5;
+        cpu.memory().write_u8(0x0A, 0xAC);
+
+        let target = 0xD5 & 0xAC;
+        cpu.execute();
+        assert_eq!(cpu.accu, target);
     }
 
     #[test]
@@ -1101,9 +1130,21 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_eor() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::EOR_ZERO_PAGE);
+        instructions.push(0x0A);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.accu = 0x31;
+        cpu.memory().write_u8(0x0A, 0xF3);
+
+        let target = 0x31 ^ 0xF3;
+        cpu.execute();
+        assert_eq!(cpu.accu, target);
     }
 
     #[test]
@@ -1261,9 +1302,21 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_ora() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::ORA_ZERO_PAGE);
+        instructions.push(0x0A);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.accu = 0x31;
+        cpu.memory().write_u8(0x0A, 0xF3);
+
+        let target = 0x31 | 0xF3;
+        cpu.execute();
+        assert_eq!(cpu.accu, target);
     }
 
     #[test]
@@ -1388,9 +1441,23 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_sbc() {
-        // TODO:
+        // TODO: Test decimal subtraction when it's implemented.
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::SBC_ZERO_PAGE);
+        instructions.push(0x0A);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.set_flag(true, mcs6502::STS_CAR_MASK);
+        cpu.accu = 0x05;
+        cpu.memory().write_u8(0x0A, 0x02);
+
+        let target = 0x05 - 0x02;
+        cpu.execute();
+        assert_eq!(cpu.accu, target);
     }
 
     fn aux_set(opcode: u8, flag: u8) {
