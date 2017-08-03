@@ -112,7 +112,7 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
 
             ops::BPL_RELATIVE    => self.op_bpl(operand),
 
-            ops::BRK_IMPLIED     => self.op_brk(operand),
+            ops::BRK_IMPLIED     => self.op_brk(),
 
             ops::BVC_RELATIVE    => self.op_bvc(operand),
 
@@ -564,8 +564,16 @@ impl<M: Memory> Mcs6502<M> {
         self.branch(cond, operand);
     }
 
-    fn op_brk(&mut self, operand: u8) {
+    fn op_brk(&mut self) {
+        self.ram.write_u16(self.sp as usize, (self.pc + 1) as u16);
+        self.sp_dec();
+        self.sp_dec();
 
+        self.ram.write_u8(self.sp as usize, self.status);
+        self.sp_dec();
+
+        self.pc = self.ram.read_u16(INT_REQ_ADDRESS) as usize;
+        self.pc.wrapping_sub(1);
     }
 
     fn op_bvc(&mut self, operand: u8) {
