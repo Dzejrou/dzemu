@@ -166,6 +166,8 @@ pub mod addr {
             ops::ROL_ACCUMULATOR |
             ops::ROR_ACCUMULATOR => AddressMode::Accumulator,
 
+            ops::custom::PRT_ABSOLUTE => AddressMode::Absolute,
+
             _ => AddressMode::None,
         }
     }
@@ -434,4 +436,8 @@ pub mod ops {
 
     // Transfer index X to stack pointer.
     pub const TXS_IMPLIED:     u8 = 0x9A;
+
+    pub mod custom {
+        pub const PRT_ABSOLUTE: u8 = 0xFF;
+    }
 }

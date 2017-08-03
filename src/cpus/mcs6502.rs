@@ -280,6 +280,8 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
 
             ops::TXS_IMPLIED     => self.op_txs(),
 
+            ops::custom::PRT_ABSOLUTE => self.op_prt(),
+
             op => panic!("Unknown opcode: {}", op)
         }
 
@@ -909,6 +911,22 @@ impl<M: Memory> Mcs6502<M> {
     fn op_txs(&mut self) {
         // TODO: Set flags here too?
         self.sp = self.idx_x;
+    }
+
+    fn op_prt(&mut self) {
+        let pc = self.pc;
+        let mut addr = self.ram.read_u16(pc + 1) as usize;
+        let mut byte = 0x01u8;
+        let mut buf: Vec<u8> = Vec::new();
+
+        while byte != 0x00 {
+            byte = self.ram.read_u8(addr);
+            addr += 1;
+            buf.push(byte);
+        }
+
+        let str = String::from_utf8_lossy(&buf);
+        println!("{}", str);
     }
 }
 
@@ -1723,5 +1741,30 @@ mod tests {
 
         cpu.execute();
         assert_eq!(cpu.sp, cpu.idx_x);
+    }
+
+    #[test]
+    fn op_prt() {
+        let mut addr: usize = 0x04FF;
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::custom::PRT_ABSOLUTE);
+        instructions.push((addr & 0xFF) as u8);
+        instructions.push((addr >> 8) as u8);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.memory().write_u8(addr, 0x48);
+        cpu.memory().write_u8(addr + 1, 0x45);
+        cpu.memory().write_u8(addr + 2, 0x4C);
+        cpu.memory().write_u8(addr + 3, 0x4C);
+        cpu.memory().write_u8(addr + 4, 0x4F);
+        cpu.memory().write_u8(addr + 5, 0x00);
+
+        cpu.execute();
+        // TODO: Make PRT use a display device (by default some
+        //       stdout wrapper), so we can test this properly.
+        //assert!(false);
     }
 }
