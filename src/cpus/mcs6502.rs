@@ -477,7 +477,7 @@ impl<M: Memory> Mcs6502<M> {
         self.sp = self.sp.wrapping_add(1);
     }
 
-    fn pc(&self) -> usize {
+    pub fn pc(&self) -> usize {
         // Returns the addr relative to the start of
         // the rom mapping block.
         self.pc - ROM_MAP_ADDRESS
@@ -1476,9 +1476,9 @@ mod tests {
         cpu.boot(&cart);
         cpu.set_flag(true, mcs6502::STS_CAR_MASK);
 
-        let mut orig = 0b1011;
+        let orig = 0b1011;
         cpu.memory().write_u8(0x0A, orig);
-        let mut target = (orig << 1);
+        let mut target = orig << 1;
         if cpu.get_flag(mcs6502::STS_CAR_MASK) {
             target |= 1;
         }
@@ -1502,11 +1502,11 @@ mod tests {
         cpu.boot(&cart);
         cpu.set_flag(true, mcs6502::STS_CAR_MASK);
 
-        let mut orig = 0b1011;
+        let orig = 0b1011;
         cpu.memory().write_u8(0x0A, orig);
-        let mut target = (orig >> 1);
+        let mut target = orig >> 1;
         if cpu.get_flag(mcs6502::STS_CAR_MASK) {
-            target |= (1 << 7);
+            target |= 1 << 7;
         }
 
         cpu.execute();
