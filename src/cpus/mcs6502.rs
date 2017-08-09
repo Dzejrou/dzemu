@@ -567,15 +567,17 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_brk(&mut self) {
-        self.ram.write_u16(self.sp as usize, (self.pc + 1) as u16);
+        let mut sp = self.sp();
+        self.ram.write_u16(sp, (self.pc + 1) as u16);
         self.sp_dec();
         self.sp_dec();
 
-        self.ram.write_u8(self.sp as usize, self.status);
+        sp = self.sp();
+        self.ram.write_u8(sp, self.status);
         self.sp_dec();
 
         self.pc = self.ram.read_u16(INT_REQ_ADDRESS) as usize;
-        self.pc.wrapping_sub(1);
+        self.pc = self.pc.wrapping_sub(addr::pc_offset(&self.addr_mode));
     }
 
     fn op_bvc(&mut self, operand: u8) {
@@ -701,18 +703,16 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_jsr(&mut self) {
-        // TODO: PC is incremented after this!
         let addr = self.ram.read_u16(self.pc + 1) as usize;
 
-        // Store pc.
-        // TODO: SP starts at 0x01FF, but atari2600
-        //       has only 128 bytes of memory?
         let sp_addr = self.sp();
-        self.ram.write_u16(sp_addr, self.pc as u16);
+        // Note: Stored PC points at the last byte of jsr instruction,
+        //       so return must let the cpu to increment the restored pc.
+        self.ram.write_u16(sp_addr, (self.pc + 2) as u16);
         self.sp_dec();
         self.sp_dec();
 
-        self.pc = addr;
+        self.pc = addr.wrapping_sub(addr::pc_offset(&self.addr_mode));
     }
 
     fn op_lda(&mut self, operand: u8) {
@@ -821,6 +821,7 @@ impl<M: Memory> Mcs6502<M> {
         self.sp_inc();
         self.sp_inc();
         self.pc = self.ram.read_u16(self.sp()) as usize;
+        self.pc = self.pc.wrapping_sub(addr::pc_offset(&self.addr_mode));
     }
 
     fn op_sbc(&mut self, operand: u8) {
@@ -1049,9 +1050,29 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_bit() {
-        // TODO:
+        let addr: u8 = 0x7F;
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::BIT_ZERO_PAGE);
+        instructions.push(addr);
+        instructions.push(ops::BIT_ZERO_PAGE);
+        instructions.push(addr);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.memory().write_u8(addr as usize, 0b11001010);
+        cpu.accu = 0b11101100;
+
+        cpu.execute();
+        assert!(cpu.get_flag(mcs6502::STS_NEG_MASK));
+        assert!(cpu.get_flag(mcs6502::STS_OVF_MASK));
+        assert!(!cpu.get_flag(mcs6502::STS_ZER_MASK));
+
+        cpu.memory().write_u8(addr as usize, 0b00000011);
+        cpu.execute();
+        assert!(cpu.get_flag(mcs6502::STS_ZER_MASK));
     }
 
     #[test]
@@ -1070,9 +1091,28 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_brk() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::BRK_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.memory().write_u16(mcs6502::INT_REQ_ADDRESS, 0xBEEF);
+        cpu.set_flag(true, mcs6502::STS_CAR_MASK);
+        cpu.set_flag(true, mcs6502::STS_OVF_MASK);
+        cpu.set_flag(true, mcs6502::STS_INT_MASK);
+        let pc = cpu.pc();
+        let status = cpu.status;
+
+        cpu.execute();
+        assert_eq!(cpu.pc(), 0xBEEF);
+        let sp = cpu.sp();
+        let stack_status = cpu.memory().read_u8(sp + 1);
+        assert_eq!(stack_status, status);
+        let stack_pc = cpu.memory().read_u16(sp + 3) as usize;
+        assert_eq!(stack_pc, pc + 1)
     }
 
     #[test]
@@ -1327,9 +1367,25 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_jsr() {
-        // TODO:
+        // TODO: Test an entire function call.
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(0x00);
+        instructions.push(ops::JSR_ABSOLUTE);
+        instructions.push(0xA0);
+        instructions.push(0x01);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.pc += 1;
+
+        cpu.execute();
+        let sp = cpu.sp();
+        let stored_pc = cpu.memory().read_u16(sp + 2) as usize;
+        assert_eq!(stored_pc, 0x03);
+        assert_eq!(cpu.pc(), 0x01A0);
     }
 
     #[test]
@@ -1603,15 +1659,30 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_rti() {
-        // TODO:
+        // Composite instruction.
+        op_plp();
+        op_rts();
     }
 
     #[test]
-    #[ignore]
     fn op_rts() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::RTS_IMPLIED);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+
+        let sp = cpu.sp();
+        let target = 0xFFAA;
+        cpu.memory().write_u16(sp, target);
+        cpu.sp_dec();
+        cpu.sp_dec();
+
+        cpu.execute();
+        assert_eq!(cpu.pc(), target as usize);
     }
 
     #[test]
@@ -1808,7 +1879,7 @@ mod tests {
 
     #[test]
     fn op_prt() {
-        let mut addr: usize = 0x04FF;
+        let addr: usize = 0x04FF;
         let mut instructions: Vec<u8> = Vec::new();
         instructions.push(ops::custom::PRT_ABSOLUTE);
         instructions.push((addr & 0xFF) as u8);
