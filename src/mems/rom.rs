@@ -12,7 +12,6 @@ impl Memory for Rom8b {
 
     fn read_u8(&self, addr: usize) -> u8 {
         self.data[addr]
-    
     }
 
     fn write_u16(&mut self, _: usize, _: u16) {
@@ -22,7 +21,7 @@ impl Memory for Rom8b {
     fn read_u16(&self, addr: usize) -> u16 {
         let lo = self.data[addr] as u16;
         let hi = self.data[addr + 1] as u16;
-    
+
         ((hi << 8) | lo)
     }
 
