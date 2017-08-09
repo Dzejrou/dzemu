@@ -71,6 +71,7 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
         let opcode = self.ram.read_u8(self.pc as usize);
         self.addr_mode = addr::get_addr_mode(opcode);
         let operand = self.get_operand();
+        println!("PC: {:X}", self.pc);
 
         match opcode {
             ops::ADC_IMMEDIATE   |
@@ -285,7 +286,7 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
             op => panic!("Unknown opcode: {}", op)
         }
 
-        self.pc += addr::pc_offset(&self.addr_mode);
+        self.pc = self.pc.wrapping_add(addr::pc_offset(&self.addr_mode));
     }
 }
 
@@ -822,6 +823,7 @@ impl<M: Memory> Mcs6502<M> {
         self.sp_inc();
         self.pc = self.ram.read_u16(self.sp()) as usize;
         self.pc = self.pc.wrapping_sub(addr::pc_offset(&self.addr_mode));
+        self.pc = self.pc.wrapping_add(1); // JSR sets PC to its last byte.
     }
 
     fn op_sbc(&mut self, operand: u8) {
@@ -1676,10 +1678,11 @@ mod tests {
         cpu.boot(&cart);
 
         let sp = cpu.sp();
-        let target = 0xFFAA;
+        let mut target = 0xFFAA;
         cpu.memory().write_u16(sp, target);
         cpu.sp_dec();
         cpu.sp_dec();
+        target += 1; // JSR stores address of its last byte.
 
         cpu.execute();
         assert_eq!(cpu.pc(), target as usize);
@@ -1900,5 +1903,38 @@ mod tests {
         // TODO: Make PRT use a display device (by default some
         //       stdout wrapper), so we can test this properly.
         //assert!(false);
+    }
+
+    #[test]
+    fn prg_function_call() {
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::LDX_IMMEDIATE);
+        instructions.push(0xAB);
+        instructions.push(ops::JSR_ABSOLUTE);
+        instructions.push(0x34);
+        instructions.push(0x12);
+        instructions.push(ops::LDX_IMMEDIATE);
+        instructions.push(0xBC);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+
+        // Create the function.
+        cpu.memory().write_u8(0x1234, ops::LDY_IMMEDIATE);
+        cpu.memory().write_u8(0x1235, 0x3D);
+        cpu.memory().write_u8(0x1236, ops::RTS_IMPLIED);
+
+        // Note: After it executes everything, mem[pc] is equal
+        //       to 0, which will execute BRK, which loads the
+        //       value at mem[INT_REQ_ADDRESS], resetting the
+        //       sequence.
+        for _ in 0..5 {
+            cpu.execute();
+        }
+
+        assert_eq!(cpu.idx_x, 0xBC);
+        assert_eq!(cpu.idx_y, 0x3D);
     }
 }
