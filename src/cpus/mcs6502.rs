@@ -1119,21 +1119,84 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn op_cmp() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::CMP_IMMEDIATE);
+        instructions.push(0x05);
+        instructions.push(ops::CMP_IMMEDIATE);
+        instructions.push(0x06);
+        instructions.push(ops::CMP_IMMEDIATE);
+        instructions.push(0x07);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.accu = 0x06;
+
+        cpu.execute();
+        assert!(cpu.get_flag(mcs6502::STS_CAR_MASK));
+
+        cpu.execute();
+        assert!(cpu.get_flag(mcs6502::STS_ZER_MASK));
+        assert!(cpu.get_flag(mcs6502::STS_CAR_MASK));
+
+        cpu.execute();
+        assert!(cpu.get_flag(mcs6502::STS_NEG_MASK));
     }
 
     #[test]
-    #[ignore]
     fn op_cpx() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::CPX_IMMEDIATE);
+        instructions.push(0x05);
+        instructions.push(ops::CPX_IMMEDIATE);
+        instructions.push(0x06);
+        instructions.push(ops::CPX_IMMEDIATE);
+        instructions.push(0x07);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.idx_x = 0x06;
+
+        cpu.execute();
+        assert!(cpu.get_flag(mcs6502::STS_CAR_MASK));
+
+        cpu.execute();
+        assert!(cpu.get_flag(mcs6502::STS_ZER_MASK));
+        assert!(cpu.get_flag(mcs6502::STS_CAR_MASK));
+
+        cpu.execute();
+        assert!(cpu.get_flag(mcs6502::STS_NEG_MASK));
     }
 
     #[test]
-    #[ignore]
     fn op_cpy() {
-        // TODO:
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::CPY_IMMEDIATE);
+        instructions.push(0x05);
+        instructions.push(ops::CPY_IMMEDIATE);
+        instructions.push(0x06);
+        instructions.push(ops::CPY_IMMEDIATE);
+        instructions.push(0x07);
+
+        let cart = Rom8b::from_vec(instructions);
+        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+
+        cpu.boot(&cart);
+        cpu.idx_y = 0x06;
+
+        cpu.execute();
+        assert!(cpu.get_flag(mcs6502::STS_CAR_MASK));
+
+        cpu.execute();
+        assert!(cpu.get_flag(mcs6502::STS_ZER_MASK));
+        assert!(cpu.get_flag(mcs6502::STS_CAR_MASK));
+
+        cpu.execute();
+        assert!(cpu.get_flag(mcs6502::STS_NEG_MASK));
     }
 
     #[test]
