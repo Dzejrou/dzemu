@@ -5,38 +5,38 @@ use inst::mcs6502::addr;
 use inst::mcs6502::AddressMode;
 
 // Start of the interrupt vector.
-const INT_VECTOR_START:   usize = 0xFFFA;
+pub const INT_VECTOR_START:   usize = 0xFFFA;
 
 // Interrupt request handler address.
-const INT_REQ_ADDRESS:    usize = 0xFFFE;
+pub const INT_REQ_ADDRESS:    usize = 0xFFFE;
 
 // Non-maskable interrupt request
 // handler address.
-const INT_NOMASK_ADDRESS: usize = 0xFFFA;
+pub const INT_NOMASK_ADDRESS: usize = 0xFFFA;
 
 // Address of the two byte address of
 // the initial PC value.
-const PC_INIT_ADDRESS:    usize = 0xFFFC;
+pub const PC_INIT_ADDRESS:    usize = 0xFFFC;
 
 // Starting address of the block of memory
 // where the rom gets mapped.
-const ROM_MAP_ADDRESS:    usize = 0x0000;
+pub const ROM_MAP_ADDRESS:    usize = 0x0000;
 
 // Base address of the stack (higher byte).
-const STACK_BASE_ADDRESS: usize = 0x0100;
+pub const STACK_BASE_ADDRESS: usize = 0x0100;
 
 // Starting address of the stack (lower byte).
-const STACK_START_VALUE:  u8 = 0xFF;
+pub const STACK_START_VALUE:  u8 = 0xFF;
 
 // Processor status register fields.
 // 5 is expansion bit.
-const STS_CAR_MASK:    u8 = 1 << 0;
-const STS_ZER_MASK:    u8 = 1 << 1;
-const STS_INT_MASK:    u8 = 1 << 2;
-const STS_DEC_MASK:    u8 = 1 << 3;
-const STS_BRK_MASK:    u8 = 1 << 4;
-const STS_OVF_MASK:    u8 = 1 << 6;
-const STS_NEG_MASK:    u8 = 1 << 7;
+pub const STS_CAR_MASK:    u8 = 1 << 0;
+pub const STS_ZER_MASK:    u8 = 1 << 1;
+pub const STS_INT_MASK:    u8 = 1 << 2;
+pub const STS_DEC_MASK:    u8 = 1 << 3;
+pub const STS_BRK_MASK:    u8 = 1 << 4;
+pub const STS_OVF_MASK:    u8 = 1 << 6;
+pub const STS_NEG_MASK:    u8 = 1 << 7;
 
 pub struct Mcs6502<M: Memory> {
     ram: M,
