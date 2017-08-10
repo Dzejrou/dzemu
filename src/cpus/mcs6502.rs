@@ -377,7 +377,6 @@ impl<M: Memory> Mcs6502<M> {
 
     pub fn interrupt() {
         if (!self.get_flag(mcs6502::STS_INT_MASK)) {
-            self.set_flag(false, mcs6502::STS_BRK_MASK);
             self.push_u16(self.pc as u16);
             self.push_u8(self.status);
             self.set_flag(true, mcs6502::STS_INT_MASK);
@@ -386,7 +385,6 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     pub fn non_maskable_interrupt() {
-        self.set_flag(false, mcs6502::STS_BRK_MASK);
         self.push_u16(self.pc as u16);
         self.push_u8(self.status);
         self.set_flag(true, mcs6502::STS_INT_MASK);
@@ -639,11 +637,12 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_brk(&mut self) {
-        let pc = self.pc + 1;
+        let pc = self.pc + 2;
         let status = self.status;
         self.push_u16(pc as u16);
         self.push_u8(status);
 
+        self.set_flag(true, STS_BRK_MASK);
         self.pc = self.ram.read_u16(INT_REQ_ADDRESS) as usize;
         self.pc = self.pc.wrapping_sub(addr::pc_offset(&self.addr_mode));
     }
