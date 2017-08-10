@@ -1,11 +1,11 @@
 use mems::Memory;
 
-pub struct Ram8b64kB {
-    data: [u8; 64 * 1024],
+pub struct Ram8b {
+    data: Vec<u8>,
     size: usize
 }
 
-impl Memory for Ram8b64kB {
+impl Memory for Ram8b {
     fn write_u8(&mut self, addr: usize, data: u8) {
         self.data[addr] = data;
     }
@@ -39,11 +39,11 @@ impl Memory for Ram8b64kB {
     }
 }
 
-impl Ram8b64kB {
-    pub fn new() -> Ram8b64kB {
-        Ram8b64kB {
-            data: [0; 64 * 1024],
-            size: 64 * 1024
+impl Ram8b {
+    pub fn new(sz: usize) -> Ram8b {
+        Ram8b {
+            data: vec![0; sz],
+            size: sz
         }
     }
 }

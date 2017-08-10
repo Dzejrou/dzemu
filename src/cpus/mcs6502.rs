@@ -828,7 +828,7 @@ impl<M: Memory> Mcs6502<M> {
 
         self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);
         self.set_flag(operand == 0, STS_ZER_MASK);
-    
+
         self.set_operand(operand);
     }
 
@@ -967,7 +967,7 @@ impl<M: Memory> Mcs6502<M> {
 mod tests {
     use mems::Memory;
     use mems::rom::Rom8b;
-    use mems::ram::Ram8b64kB;
+    use mems::ram::Ram8b;
     use cpus::Cpu;
     use cpus::mcs6502::Mcs6502;
     use cpus::mcs6502;
@@ -982,7 +982,7 @@ mod tests {
         instructions.push(0x0A);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.set_flag(true, mcs6502::STS_NEG_MASK);
@@ -1002,7 +1002,7 @@ mod tests {
         instructions.push(0x0A);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.accu = 0xD5;
@@ -1021,7 +1021,7 @@ mod tests {
         instructions.push(ops::ASL_ACCUMULATOR);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
 
@@ -1048,7 +1048,7 @@ mod tests {
         instructions.push(0x0A);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
 
@@ -1063,7 +1063,6 @@ mod tests {
         cpu.set_flag(cond, flag);
         cpu.execute();
         assert_eq!(cpu.pc(), target);
-    
     }
 
     #[test]
@@ -1091,7 +1090,7 @@ mod tests {
         instructions.push(addr);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.memory().write_u8(addr as usize, 0b11001010);
@@ -1128,7 +1127,7 @@ mod tests {
         instructions.push(ops::BRK_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.memory().write_u16(mcs6502::INT_REQ_ADDRESS, 0xBEEF);
@@ -1161,7 +1160,7 @@ mod tests {
         instructions.push(opcode);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.set_flag(true, flag);
@@ -1200,7 +1199,7 @@ mod tests {
         instructions.push(0x07);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.accu = 0x06;
@@ -1227,7 +1226,7 @@ mod tests {
         instructions.push(0x07);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.idx_x = 0x06;
@@ -1254,7 +1253,7 @@ mod tests {
         instructions.push(0x07);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.idx_y = 0x06;
@@ -1279,7 +1278,7 @@ mod tests {
         instructions.push(0x00);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.memory().write_u8(0x000A, 5);
@@ -1293,7 +1292,7 @@ mod tests {
         instructions.push(ops::DEX_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.idx_x = 0x0B;
@@ -1307,7 +1306,7 @@ mod tests {
         instructions.push(ops::DEY_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.idx_y = 0x0B;
@@ -1322,7 +1321,7 @@ mod tests {
         instructions.push(0x0A);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.accu = 0x31;
@@ -1342,7 +1341,7 @@ mod tests {
         instructions.push(0x00);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.memory().write_u8(0x000A, 5);
@@ -1356,7 +1355,7 @@ mod tests {
         instructions.push(ops::INX_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.idx_x = 0x0A;
@@ -1370,7 +1369,7 @@ mod tests {
         instructions.push(ops::INY_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.idx_y = 0x0A;
@@ -1387,7 +1386,7 @@ mod tests {
         instructions.push(0x01);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         let target = 0x01A0;
@@ -1407,7 +1406,7 @@ mod tests {
         instructions.push(0x01);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.pc += 1;
@@ -1429,7 +1428,7 @@ mod tests {
         instructions.push(0x12);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         let mut target = 0xAB;
@@ -1453,7 +1452,7 @@ mod tests {
         instructions.push(0x12);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         let mut target = 0xAB;
@@ -1477,7 +1476,7 @@ mod tests {
         instructions.push(0x12);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         let mut target = 0xAB;
@@ -1499,7 +1498,7 @@ mod tests {
         instructions.push(ops::LSR_ACCUMULATOR);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
 
@@ -1530,7 +1529,7 @@ mod tests {
         instructions.push(0x0A);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.accu = 0x31;
@@ -1547,7 +1546,7 @@ mod tests {
         instructions.push(ops::PHA_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
 
@@ -1564,7 +1563,7 @@ mod tests {
         instructions.push(ops::PHP_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
 
@@ -1592,7 +1591,7 @@ mod tests {
         instructions.push(ops::PLA_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.stack_push_u8(0xFA);
@@ -1608,7 +1607,7 @@ mod tests {
         instructions.push(ops::PLP_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
 
@@ -1636,7 +1635,7 @@ mod tests {
         instructions.push(0x0A);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.set_flag(true, mcs6502::STS_CAR_MASK);
@@ -1661,7 +1660,7 @@ mod tests {
         instructions.push(0x0A);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.set_flag(true, mcs6502::STS_CAR_MASK);
@@ -1691,7 +1690,7 @@ mod tests {
         instructions.push(ops::RTS_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
 
@@ -1711,7 +1710,7 @@ mod tests {
         instructions.push(0x0A);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.set_flag(true, mcs6502::STS_CAR_MASK);
@@ -1728,7 +1727,7 @@ mod tests {
         instructions.push(opcode);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.set_flag(false, flag);
@@ -1758,7 +1757,7 @@ mod tests {
         instructions.push(0x35);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.accu = 0xAC;
@@ -1775,7 +1774,7 @@ mod tests {
         instructions.push(0x35);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.idx_x = 0xAC;
@@ -1794,7 +1793,7 @@ mod tests {
         instructions.push(0x35);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.idx_y = 0xAC;
@@ -1812,7 +1811,7 @@ mod tests {
         instructions.push(ops::TAX_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.accu = 0xC5;
@@ -1827,7 +1826,7 @@ mod tests {
         instructions.push(ops::TAY_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.accu = 0xC5;
@@ -1842,7 +1841,7 @@ mod tests {
         instructions.push(ops::TYA_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.idx_y = 0xC5;
@@ -1857,7 +1856,7 @@ mod tests {
         instructions.push(ops::TSX_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
 
@@ -1871,7 +1870,7 @@ mod tests {
         instructions.push(ops::TXA_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.idx_x = 0xC5;
@@ -1886,7 +1885,7 @@ mod tests {
         instructions.push(ops::TXS_IMPLIED);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.idx_x = 0xC5;
@@ -1904,7 +1903,7 @@ mod tests {
         instructions.push((addr >> 8) as u8);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
         cpu.memory().write_u8(addr, 0x48);
@@ -1932,7 +1931,7 @@ mod tests {
         instructions.push(0xBC);
 
         let cart = Rom8b::from_vec(instructions);
-        let mut cpu = Mcs6502::new(Ram8b64kB::new());
+        let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
 
