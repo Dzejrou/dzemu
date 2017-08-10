@@ -375,6 +375,24 @@ impl<M: Memory> Mcs6502<M> {
         }
     }
 
+    pub fn interrupt() {
+        if (!self.get_flag(mcs6502::STS_INT_MASK)) {
+            self.set_flag(false, mcs6502::STS_BRK_MASK);
+            self.push_u16(self.pc as u16);
+            self.push_u8(self.status);
+            self.set_flag(true, mcs6502::STS_INT_MASK);
+            self.pc = self.ram.read_u16(INT_REQ_ADDRESS) as usize;
+        }
+    }
+
+    pub fn non_maskable_interrupt() {
+        self.set_flag(false, mcs6502::STS_BRK_MASK);
+        self.push_u16(self.pc as u16);
+        self.push_u8(self.status);
+        self.set_flag(true, mcs6502::STS_INT_MASK);
+        self.pc = self.ram.read_u16(INT_NOMASK_ADDRESS) as usize;
+    }
+
     fn get_operand(&self) -> u8 {
         match self.addr_mode {
             AddressMode::Relative    |
