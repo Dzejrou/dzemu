@@ -31,6 +31,12 @@ impl Memory for Ram8b64kB {
     fn size(&self) -> usize {
         self.size
     }
+
+    fn map(&mut self, start: usize, src: &Memory) {
+        for i in 0..src.size() {
+            self.data[start + i] = src.read_u8(i);
+        }
+    }
 }
 
 impl Ram8b64kB {

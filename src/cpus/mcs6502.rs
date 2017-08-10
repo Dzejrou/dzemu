@@ -60,11 +60,7 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
         self.set_flag(true, STS_INT_MASK);
         self.pc = self.ram.read_u16(PC_INIT_ADDRESS) as usize;
 
-        let mut addr: usize = ROM_MAP_ADDRESS;
-        for i in 0..cart.size() {
-            self.ram.write_u8(addr, cart.read_u8(i));
-            addr += 1;
-        }
+        self.ram.map(ROM_MAP_ADDRESS, cart);
     }
 
     fn execute(&mut self) {
@@ -1941,9 +1937,12 @@ mod tests {
         cpu.boot(&cart);
 
         // Create the function.
-        cpu.memory().write_u8(0x1234, ops::LDY_IMMEDIATE);
-        cpu.memory().write_u8(0x1235, 0x3D);
-        cpu.memory().write_u8(0x1236, ops::RTS_IMPLIED);
+        let mut instructions: Vec<u8> = Vec::new();
+        instructions.push(ops::LDY_IMMEDIATE);
+        instructions.push(0x3D);
+        instructions.push(ops::RTS_IMPLIED);
+        let func = Rom8b::from_vec(instructions);
+        cpu.memory().map(0x1234, &func);
 
         // Note: After it executes everything, mem[pc] is equal
         //       to 0, which will execute BRK, which loads the

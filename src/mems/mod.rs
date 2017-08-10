@@ -7,4 +7,5 @@ pub trait Memory {
     fn write_u16(&mut self, usize, u16);
     fn read_u16(&self, usize) -> u16;
     fn size(&self) -> usize;
+    fn map(&mut self, usize, &Memory) {}
 }
