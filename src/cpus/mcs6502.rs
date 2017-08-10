@@ -1,4 +1,5 @@
 use cpus::Cpu;
+use cpus::Stack;
 use mems::Memory;
 use inst::mcs6502::ops;
 use inst::mcs6502::addr;
@@ -284,8 +285,14 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
         self.pc = self.pc.wrapping_add(addr::pc_offset(&self.addr_mode));
     }
 
+    fn run(&mut self, count: usize) {
+        for _ in 0..count {
+            self.execute();
+        }
+    }
+
     fn dump(&self) {
-        let stack_top = STACK_BASE_ADDRESS + STACK_START_VALUE as usize;
+        let top = STACK_BASE_ADDRESS + STACK_START_VALUE as usize;
         println!("CPU STATE:");
         println!("|         PC: 0x{:X}", self.pc());
         println!("|         SP: 0x{:X}", self.sp());
@@ -295,13 +302,13 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
         println!("|     STATUS: 0b{:b}", self.status);
         println!("|       ADDR: {:?}", self.addr_mode);
         println!("| STACK BASE: 0x{:X}", STACK_BASE_ADDRESS);
-        println!("| STACK  TOP: 0x{:X}", stack_top);
+        println!("| STACK  TOP: 0x{:X}", top);
 
         println!("CPU STACK:");
-        if stack_top == self.sp() {
+        if top == self.sp() {
             println!("| EMPTY");
         } else {
-            let mut i = stack_top;
+            let mut i = top;
             while i > self.sp() {
                 println!("| [{:X}]: {:X}", i, self.ram.read_u8(i));
                 i = i.wrapping_sub(1);
@@ -309,6 +316,14 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
         }
     }
 
+    fn pc(&self) -> usize {
+        // Returns the addr relative to the start of
+        // the rom mapping block.
+        self.pc - ROM_MAP_ADDRESS
+    }
+}
+
+impl<M: Memory> Stack for Mcs6502<M> {
     fn sp_dec(&mut self) {
         self.sp = self.sp.wrapping_sub(1);
     }
@@ -317,25 +332,25 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
         self.sp = self.sp.wrapping_add(1);
     }
 
-    fn stack_push_u8(&mut self, data: u8) {
+    fn push_u8(&mut self, data: u8) {
         let sp = self.sp();
         self.ram.write_u8(sp, data);
         self.sp_dec();
     }
 
-    fn stack_push_u16(&mut self, data: u16) {
+    fn push_u16(&mut self, data: u16) {
         let sp = self.sp();
         self.ram.write_u16(sp, data);
         self.sp_dec();
         self.sp_dec();
     }
 
-    fn stack_pop_u8(&mut self) -> u8 {
+    fn pop_u8(&mut self) -> u8 {
         self.sp_inc();
         self.ram.read_u8(self.sp())
     }
 
-    fn stack_pop_u16(&mut self) -> u16 {
+    fn pop_u16(&mut self) -> u16 {
         self.sp_inc();
         self.sp_inc();
         self.ram.read_u16(self.sp())
@@ -343,12 +358,6 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
 
     fn sp(&self) -> usize {
         (self.sp as usize) + STACK_BASE_ADDRESS
-    }
-
-    fn pc(&self) -> usize {
-        // Returns the addr relative to the start of
-        // the rom mapping block.
-        self.pc - ROM_MAP_ADDRESS
     }
 }
 
@@ -614,8 +623,8 @@ impl<M: Memory> Mcs6502<M> {
     fn op_brk(&mut self) {
         let pc = self.pc + 1;
         let status = self.status;
-        self.stack_push_u16(pc as u16);
-        self.stack_push_u8(status);
+        self.push_u16(pc as u16);
+        self.push_u8(status);
 
         self.pc = self.ram.read_u16(INT_REQ_ADDRESS) as usize;
         self.pc = self.pc.wrapping_sub(addr::pc_offset(&self.addr_mode));
@@ -749,7 +758,7 @@ impl<M: Memory> Mcs6502<M> {
         // Note: Stored PC points at the last byte of jsr instruction,
         //       so return must let the cpu to increment the restored pc.
         let pc = self.pc + 2;
-        self.stack_push_u16(pc as u16);
+        self.push_u16(pc as u16);
 
         self.pc = addr.wrapping_sub(addr::pc_offset(&self.addr_mode));
     }
@@ -803,20 +812,20 @@ impl<M: Memory> Mcs6502<M> {
 
     fn op_pha(&mut self) {
         let accu = self.accu;
-        self.stack_push_u8(accu);
+        self.push_u8(accu);
     }
 
     fn op_php(&mut self) {
         let status = self.status;
-        self.stack_push_u8(status);
+        self.push_u8(status);
     }
 
     fn op_pla(&mut self) {
-        self.accu = self.stack_pop_u8();
+        self.accu = self.pop_u8();
     }
 
     fn op_plp(&mut self) {
-        self.status = self.stack_pop_u8();
+        self.status = self.pop_u8();
     }
 
     fn op_rol(&mut self, mut operand: u8) {
@@ -851,7 +860,7 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_rts(&mut self) {
-        self.pc = self.stack_pop_u16() as usize;
+        self.pc = self.pop_u16() as usize;
         self.pc = self.pc.wrapping_sub(addr::pc_offset(&self.addr_mode));
         self.pc = self.pc.wrapping_add(1); // JSR sets PC to its last byte.
     }
@@ -969,6 +978,7 @@ mod tests {
     use mems::rom::Rom8b;
     use mems::ram::Ram8b;
     use cpus::Cpu;
+    use cpus::Stack;
     use cpus::mcs6502::Mcs6502;
     use cpus::mcs6502;
     use inst::mcs6502::ops;
@@ -1139,9 +1149,9 @@ mod tests {
 
         cpu.execute();
         assert_eq!(cpu.pc(), 0xBEEF);
-        let stack_status = cpu.stack_pop_u8();
+        let stack_status = cpu.pop_u8();
         assert_eq!(stack_status, status);
-        let stack_pc = cpu.stack_pop_u16() as usize;
+        let stack_pc = cpu.pop_u16() as usize;
         assert_eq!(stack_pc, pc + 1)
     }
 
@@ -1412,7 +1422,7 @@ mod tests {
         cpu.pc += 1;
 
         cpu.execute();
-        let stored_pc = cpu.stack_pop_u16() as usize;
+        let stored_pc = cpu.pop_u16() as usize;
         assert_eq!(stored_pc, 0x03);
         assert_eq!(cpu.pc(), 0x01A0);
     }
@@ -1553,8 +1563,8 @@ mod tests {
         cpu.accu = 0xAF;
         cpu.execute();
 
-        let stack_top = cpu.stack_pop_u8();
-        assert_eq!(stack_top, cpu.accu);
+        let top = cpu.pop_u8();
+        assert_eq!(top, cpu.accu);
     }
 
     #[test]
@@ -1575,14 +1585,14 @@ mod tests {
         cpu.set_flag(true, mcs6502::STS_OVF_MASK);
         cpu.execute();
 
-        let stack_top = cpu.stack_pop_u8();
+        let top = cpu.pop_u8();
 
-        assert!((stack_top & mcs6502::STS_CAR_MASK) > 0);
-        assert!((stack_top & mcs6502::STS_NEG_MASK) > 0);
-        assert!((stack_top & mcs6502::STS_ZER_MASK) == 0);
-        assert!((stack_top & mcs6502::STS_DEC_MASK) > 0);
-        assert!((stack_top & mcs6502::STS_INT_MASK) == 0);
-        assert!((stack_top & mcs6502::STS_OVF_MASK) > 0);
+        assert!((top & mcs6502::STS_CAR_MASK) > 0);
+        assert!((top & mcs6502::STS_NEG_MASK) > 0);
+        assert!((top & mcs6502::STS_ZER_MASK) == 0);
+        assert!((top & mcs6502::STS_DEC_MASK) > 0);
+        assert!((top & mcs6502::STS_INT_MASK) == 0);
+        assert!((top & mcs6502::STS_OVF_MASK) > 0);
     }
 
     #[test]
@@ -1594,7 +1604,7 @@ mod tests {
         let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
-        cpu.stack_push_u8(0xFA);
+        cpu.push_u8(0xFA);
 
         cpu.execute();
 
@@ -1615,7 +1625,7 @@ mod tests {
         state |= mcs6502::STS_CAR_MASK;
         state |= mcs6502::STS_INT_MASK;
         state |= mcs6502::STS_NEG_MASK;
-        cpu.stack_push_u8(state);
+        cpu.push_u8(state);
 
         cpu.execute();
 
@@ -1695,7 +1705,7 @@ mod tests {
         cpu.boot(&cart);
 
         let mut target = 0xFFAA;
-        cpu.stack_push_u16(target);
+        cpu.push_u16(target);
         target += 1; // JSR stores address of its last byte.
 
         cpu.execute();
