@@ -375,20 +375,26 @@ impl<M: Memory> Mcs6502<M> {
         }
     }
 
-    pub fn interrupt() {
-        if (!self.get_flag(STS_INT_MASK)) {
+    pub fn interrupt(&mut self) {
+        if !self.get_flag(STS_INT_MASK) {
+            let pc = self.pc as u16;
+            let status = self.status;
+
+            self.push_u16(pc);
+            self.push_u8(status);
             self.set_flag(false, STS_BRK_MASK);
-            self.push_u16(self.pc as u16);
-            self.push_u8(self.status);
             self.set_flag(true, STS_INT_MASK);
             self.pc = self.ram.read_u16(INT_REQ_ADDRESS) as usize;
         }
     }
 
-    pub fn non_maskable_interrupt() {
+    pub fn non_maskable_interrupt(&mut self) {
+        let pc = self.pc as u16;
+        let status = self.status;
+
+        self.push_u16(pc);
+        self.push_u8(status);
         self.set_flag(false, STS_BRK_MASK);
-        self.push_u16(self.pc as u16);
-        self.push_u8(self.status);
         self.set_flag(true, STS_INT_MASK);
         self.pc = self.ram.read_u16(INT_NOMASK_ADDRESS) as usize;
     }
@@ -1171,7 +1177,7 @@ mod tests {
         let stack_status = cpu.pop_u8();
         assert_eq!(stack_status, status);
         let stack_pc = cpu.pop_u16() as usize;
-        assert_eq!(stack_pc, pc + 1)
+        assert_eq!(stack_pc, pc + 2)
     }
 
     #[test]
