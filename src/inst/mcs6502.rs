@@ -7,6 +7,7 @@ pub enum AddressMode {
     Absolute,
     AbsoluteX,
     AbsoluteY,
+    Indirect,
     IndirectX,
     IndirectY,
     Relative,
@@ -22,7 +23,8 @@ pub mod addr {
         match *mode {
             AddressMode::Absolute  |
             AddressMode::AbsoluteX |
-            AddressMode::AbsoluteY => 3,
+            AddressMode::AbsoluteY |
+            AddressMode::Indirect  => 3,
             AddressMode::None      => 1,
             _                      => 2,
         }
@@ -133,6 +135,8 @@ pub mod addr {
             ops::ORA_ABSOLUTE_Y  |
             ops::SBC_ABSOLUTE_Y  |
             ops::STA_ABSOLUTE_Y  => AddressMode::AbsoluteY,
+
+            ops::JMP_INDIRECT    => AddressMode::Indirect,
 
             ops::ADC_INDIRECT_X  |
             ops::AND_INDIRECT_X  |

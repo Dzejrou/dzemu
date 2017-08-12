@@ -488,6 +488,7 @@ impl<M: Memory> Mcs6502<M> {
 
             AddressMode::Accumulator => self.accu,
 
+            AddressMode::Indirect    |
             AddressMode::None        => 0
         }
     }
@@ -782,17 +783,17 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_jmp(&mut self) {
+        let offs = addr::pc_offset(&self.addr_mode);
+        let addr = self.ram.read_u16(self.pc + 1) as usize;
+
         match self.addr_mode {
             AddressMode::Absolute => {
-                let offs = addr::pc_offset(&self.addr_mode);
-                let addr = self.ram.read_u16(self.pc + 1) as usize;
                 self.jump(addr - offs);
             }
 
-            AddressMode::IndirectX => {
-                // TODO: Page 141.
-                // TODO: This is supposed to be just Indirect?
-                ()
+            AddressMode::Indirect => {
+                let actual_addr = self.ram.read_u16(addr) as usize;
+                self.jump(actual_addr - offs);
             }
 
             _                     => ()
@@ -1446,16 +1447,24 @@ mod tests {
         let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
 
         cpu.boot(&cart);
-        let target = 0x01A0;
+        let mut target = 0x01A0;
 
         cpu.execute();
         assert_eq!(cpu.addr_mode, AddressMode::Absolute);
+        assert_eq!(cpu.pc(), target);
+
+        cpu.memory().write_u8(target, ops::JMP_INDIRECT);
+        cpu.memory().write_u16(target + 1, 0xABBA);
+        cpu.memory().write_u16(0xABBA, 0xBAAB);
+        target = 0xBAAB;
+
+        cpu.execute();
+        assert_eq!(cpu.addr_mode, AddressMode::Indirect);
         assert_eq!(cpu.pc(), target);
     }
 
     #[test]
     fn op_jsr() {
-        // TODO: Test an entire function call.
         let mut instructions: Vec<u8> = Vec::new();
         instructions.push(0x00);
         instructions.push(ops::JSR_ABSOLUTE);
