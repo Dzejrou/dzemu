@@ -780,12 +780,12 @@ impl<M: Memory> Mcs6502<M> {
 
         match self.addr_mode {
             AddressMode::Absolute => {
-                self.jump(addr - offs);
+                self.jump(addr.wrapping_sub(offs));
             }
 
             AddressMode::Indirect => {
                 let actual_addr = self.ram.read_u16(addr) as usize;
-                self.jump(actual_addr - offs);
+                self.jump(actual_addr.wrapping_sub(offs));
             }
 
             _                     => ()

@@ -1,6 +1,6 @@
 /target/
 **/*.rs.bk
 Cargo.lock
-space_invaders.bin
 /specs/
 tags
+/bin/*
