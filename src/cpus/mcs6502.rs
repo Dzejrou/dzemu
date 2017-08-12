@@ -435,16 +435,14 @@ impl<M: Memory> Mcs6502<M> {
 
             AddressMode::ZeroPageX   => {
                 let mut addr = self.ram.read_u8(self.pc + 1) as usize;
-                let offs = self.idx_x as i8;
-                addr = ((addr as i8) + offs) as usize;
+                addr = addr.wrapping_add(self.idx_x as usize);
 
                 self.ram.read_u8(addr)
             }
 
             AddressMode::ZeroPageY   => {
                 let mut addr = self.ram.read_u8(self.pc + 1) as usize;
-                let offs = self.idx_y as i8;
-                addr = ((addr as i8) + offs) as usize;
+                addr = addr.wrapping_add(self.idx_y as usize);
 
                 self.ram.read_u8(addr)
             }
@@ -456,23 +454,20 @@ impl<M: Memory> Mcs6502<M> {
 
             AddressMode::AbsoluteX   => {
                 let mut addr = self.ram.read_u16(self.pc + 1) as usize;
-                let offs = self.idx_x as i8;
-                addr = ((addr as i8) + offs) as usize;
+                addr = addr.wrapping_add(self.idx_x as usize);
 
                 self.ram.read_u8(addr)
             }
 
             AddressMode::AbsoluteY   => {
                 let mut addr = self.ram.read_u16(self.pc + 1) as usize;
-                let offs = self.idx_y as i8;
-                addr = ((addr as i8) + offs) as usize;
+                addr = addr.wrapping_add(self.idx_y as usize);
 
                 self.ram.read_u8(addr)
             }
 
             AddressMode::IndirectX   => {
                 let mut ptr = (self.ram.read_u8(self.pc + 1) + self.idx_x) as usize;
-                // TODO: Does it really wrap around zero page?
                 ptr = ptr % 0xFF;
 
                 let addr = self.ram.read_u16(ptr) as usize;
@@ -480,7 +475,8 @@ impl<M: Memory> Mcs6502<M> {
             }
 
             AddressMode::IndirectY   => {
-                let mut addr = self.ram.read_u16(self.pc + 1) as usize;
+                let ptr = self.ram.read_u8(self.pc + 1) as usize;
+                let mut addr = self.ram.read_u16(ptr) as usize;
                 addr += self.idx_y as usize;
 
                 self.ram.read_u8(addr)
@@ -514,16 +510,14 @@ impl<M: Memory> Mcs6502<M> {
 
             AddressMode::ZeroPageX   => {
                 let mut addr = self.ram.read_u8(self.pc + 1) as usize;
-                let offs = self.idx_x as i8;
-                addr = ((addr as i8) + offs) as usize;
+                addr = addr.wrapping_add(self.idx_x as usize);
 
                 self.ram.write_u8(addr, operand);
             }
 
             AddressMode::ZeroPageY   => {
                 let mut addr = self.ram.read_u8(self.pc + 1) as usize;
-                let offs = self.idx_y as i8;
-                addr = ((addr as i8) + offs) as usize;
+                addr = addr.wrapping_add(self.idx_y as usize);
 
                 self.ram.write_u8(addr, operand);
             }
@@ -535,22 +529,19 @@ impl<M: Memory> Mcs6502<M> {
 
             AddressMode::AbsoluteX   => {
                 let mut addr = self.ram.read_u16(self.pc + 1) as usize;
-                let offs = self.idx_x as i8;
-                addr = ((addr as i8) + offs) as usize;
+                addr = addr.wrapping_add(self.idx_x as usize);
 
                 self.ram.write_u8(addr, operand);
             }
 
             AddressMode::AbsoluteY   => {
                 let mut addr = self.ram.read_u16(self.pc + 1) as usize;
-                let offs = self.idx_y as i8;
-                addr = ((addr as i8) + offs) as usize;
+                addr = addr.wrapping_add(self.idx_y as usize);
 
                 self.ram.write_u8(addr, operand);
             }
 
             AddressMode::IndirectX   => {
-                // TODO: Fix indirect handling of idx as signed!
                 let mut ptr = (self.ram.read_u8(self.pc + 1) + self.idx_x) as usize;
                 ptr = ptr % 0xFF;
 
@@ -559,7 +550,8 @@ impl<M: Memory> Mcs6502<M> {
             }
 
             AddressMode::IndirectY   => {
-                let mut addr = self.ram.read_u16(self.pc + 1) as usize;
+                let ptr = self.ram.read_u8(self.pc + 1) as usize;
+                let mut addr = self.ram.read_u16(ptr) as usize;
                 addr += self.idx_y as usize;
 
                 self.ram.write_u8(addr, operand);
