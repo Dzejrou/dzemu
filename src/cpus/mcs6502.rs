@@ -385,6 +385,18 @@ impl<M: Memory> Mcs6502<M> {
         }
     }
 
+    pub fn set_init_pc_value(&mut self, addr: u16) {
+        self.ram.write_u16(PC_INIT_ADDRESS, addr);
+    }
+
+    pub fn set_int_req_addr(&mut self, addr: u16) {
+        self.ram.write_u16(INT_REQ_ADDRESS, addr);
+    }
+
+    pub fn set_int_nomask_addr(&mut self, addr: u16) {
+        self.ram.write_u16(INT_NOMASK_ADDRESS, addr);
+    }
+
     pub fn interrupt(&mut self) {
         if !self.get_flag(STS_INT_MASK) {
             let pc = self.pc as u16;
