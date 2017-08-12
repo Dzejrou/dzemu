@@ -56,12 +56,22 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
     }
 
     fn boot(&mut self, cart : &Memory) {
+        self.restart();
+
+        self.ram.map(ROM_MAP_ADDRESS, cart);
+    }
+
+    fn restart(&mut self) {
+        self.accu = 0;
+        self.idx_x = 0;
+        self.idx_y = 0;
+
+        self.pc = self.ram.read_u16(PC_INIT_ADDRESS) as usize;
+        self.sp = STACK_START_VALUE - 2;
+
         // Last instruction of the init sequence of a rom
         // should be CLI.
         self.set_flag(true, STS_INT_MASK);
-        self.pc = self.ram.read_u16(PC_INIT_ADDRESS) as usize;
-
-        self.ram.map(ROM_MAP_ADDRESS, cart);
     }
 
     fn execute(&mut self) {
