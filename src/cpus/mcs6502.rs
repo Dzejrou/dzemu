@@ -991,7 +991,6 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_txs(&mut self) {
-        // TODO: Set flags here too?
         self.sp = self.idx_x;
     }
 
@@ -1321,7 +1320,6 @@ mod tests {
 
     #[test]
     fn op_dec() {
-        // TODO: Test multiple addressing modes.
         let mut instructions: Vec<u8> = Vec::new();
         instructions.push(ops::DEC_ABSOLUTE);
         instructions.push(0x0A);
@@ -1384,7 +1382,6 @@ mod tests {
 
     #[test]
     fn op_inc() {
-        // TODO: Test multiple addressing modes.
         let mut instructions: Vec<u8> = Vec::new();
         instructions.push(ops::INC_ABSOLUTE);
         instructions.push(0x0A);
@@ -1429,7 +1426,6 @@ mod tests {
 
     #[test]
     fn op_jmp() {
-        // TODO: Test indirect when implemented.
         let mut instructions: Vec<u8> = Vec::new();
         instructions.push(ops::JMP_ABSOLUTE);
         instructions.push(0xA0);
@@ -1477,7 +1473,6 @@ mod tests {
 
     #[test]
     fn op_lda() {
-        // TODO: Test different address modes.
         let mut instructions: Vec<u8> = Vec::new();
         instructions.push(ops::LDA_IMMEDIATE);
         instructions.push(0xAB);
