@@ -1,3 +1,5 @@
+use mems::Memory;
+
 #[derive(Debug, PartialEq)]
 pub enum AddressMode {
     Immediate,
@@ -444,4 +446,253 @@ pub mod ops {
     pub mod custom {
         pub const PRT_ABSOLUTE: u8 = 0xFF;
     }
+}
+
+pub fn op_name(opcode: u8) -> String {
+    let str = match opcode {
+        ops::ADC_IMMEDIATE        |
+        ops::ADC_ZERO_PAGE        |
+        ops::ADC_ZERO_PAGE_X      |
+        ops::ADC_ABSOLUTE         |
+        ops::ADC_ABSOLUTE_X       |
+        ops::ADC_ABSOLUTE_Y       |
+        ops::ADC_INDIRECT_X       |
+        ops::ADC_INDIRECT_Y       => "ADC",
+
+        ops::AND_IMMEDIATE        |
+        ops::AND_ZERO_PAGE        |
+        ops::AND_ZERO_PAGE_X      |
+        ops::AND_ABSOLUTE         |
+        ops::AND_ABSOLUTE_X       |
+        ops::AND_ABSOLUTE_Y       |
+        ops::AND_INDIRECT_X       |
+        ops::AND_INDIRECT_Y       => "AND",
+
+        ops::ASL_ACCUMULATOR      |
+        ops::ASL_ZERO_PAGE        |
+        ops::ASL_ZERO_PAGE_X      |
+        ops::ASL_ABSOLUTE         |
+        ops::ASL_ABSOLUTE_X       => "ASL",
+
+        ops::BCC_RELATIVE         => "BCC",
+
+        ops::BCS_RELATIVE         => "BCS",
+
+        ops::BEQ_RELATIVE         => "BEQ",
+
+        ops::BIT_ZERO_PAGE        |
+        ops::BIT_ABSOLUTE         => "BIT",
+
+        ops::BMI_RELATIVE         => "BMI",
+
+        ops::BNE_RELATIVE         => "BNE",
+
+        ops::BPL_RELATIVE         => "BPL",
+
+        ops::BRK_IMPLIED          => "BRK",
+
+        ops::BVC_RELATIVE         => "BVC",
+
+        ops::BVS_RELATIVE         => "BVS",
+
+        ops::CLC_IMPLIED          => "CLC",
+
+        ops::CLD_IMPLIED          => "CLD",
+
+        ops::CLI_IMPLIED          => "CLI",
+
+        ops::CLV_IMPLIED          => "CLV",
+
+        ops::CMP_IMMEDIATE        |
+        ops::CMP_ZERO_PAGE        |
+        ops::CMP_ZERO_PAGE_X      |
+        ops::CMP_ABSOLUTE         |
+        ops::CMP_ABSOLUTE_X       |
+        ops::CMP_ABSOLUTE_Y       |
+        ops::CMP_INDIRECT_X       |
+        ops::CMP_INDIRECT_Y       => "CMP",
+
+        ops::CPX_IMMEDIATE        |
+        ops::CPX_ZERO_PAGE        |
+        ops::CPX_ABSOLUTE         => "CPX",
+
+        ops::CPY_IMMEDIATE        |
+        ops::CPY_ZERO_PAGE        |
+        ops::CPY_ABSOLUTE         => "CPY",
+
+        ops::DEC_ZERO_PAGE        |
+        ops::DEC_ZERO_PAGE_X      |
+        ops::DEC_ABSOLUTE         |
+        ops::DEC_ABSOLUTE_X       => "DEC",
+
+        ops::DEX_IMPLIED          => "DEX",
+
+        ops::DEY_IMPLIED          => "DEY",
+
+        ops::EOR_IMMEDIATE        |
+        ops::EOR_ZERO_PAGE        |
+        ops::EOR_ZERO_PAGE_X      |
+        ops::EOR_ABSOLUTE         |
+        ops::EOR_ABSOLUTE_X       |
+        ops::EOR_ABSOLUTE_Y       |
+        ops::EOR_INDIRECT_X       |
+        ops::EOR_INDIRECT_Y       => "EOR",
+
+        ops::INC_ZERO_PAGE        |
+        ops::INC_ZERO_PAGE_X      |
+        ops::INC_ABSOLUTE         |
+        ops::INC_ABSOLUTE_X       => "INC",
+
+        ops::INX_IMPLIED          => "INX",
+
+        ops::INY_IMPLIED          => "INY",
+
+        ops::JMP_ABSOLUTE         |
+        ops::JMP_INDIRECT         => "JMP",
+
+        ops::JSR_ABSOLUTE         => "JSR",
+
+        ops::LDA_IMMEDIATE        |
+        ops::LDA_ZERO_PAGE        |
+        ops::LDA_ZERO_PAGE_X      |
+        ops::LDA_ABSOLUTE         |
+        ops::LDA_ABSOLUTE_X       |
+        ops::LDA_ABSOLUTE_Y       |
+        ops::LDA_INDIRECT_X       |
+        ops::LDA_INDIRECT_Y       => "LDA",
+
+        ops::LDX_IMMEDIATE        |
+        ops::LDX_ZERO_PAGE        |
+        ops::LDX_ZERO_PAGE_Y      |
+        ops::LDX_ABSOLUTE         |
+        ops::LDX_ABSOLUTE_Y       => "LDX",
+
+        ops::LDY_IMMEDIATE        |
+        ops::LDY_ZERO_PAGE        |
+        ops::LDY_ZERO_PAGE_X      |
+        ops::LDY_ABSOLUTE         |
+        ops::LDY_ABSOLUTE_X       => "LDY",
+
+        ops::LSR_ACCUMULATOR      |
+        ops::LSR_ZERO_PAGE        |
+        ops::LSR_ZERO_PAGE_X      |
+        ops::LSR_ABSOLUTE         |
+        ops::LSR_ABSOLUTE_X       => "LSR",
+
+        ops::NOP_IMPLIED          => "NOP",
+
+        ops::ORA_IMMEDIATE        |
+        ops::ORA_ZERO_PAGE        |
+        ops::ORA_ZERO_PAGE_X      |
+        ops::ORA_ABSOLUTE         |
+        ops::ORA_ABSOLUTE_X       |
+        ops::ORA_ABSOLUTE_Y       |
+        ops::ORA_INDIRECT_X       |
+        ops::ORA_INDIRECT_Y       => "ORA",
+
+        ops::PHA_IMPLIED          => "PHA",
+
+        ops::PHP_IMPLIED          => "PHP",
+
+        ops::PLA_IMPLIED          => "PLA",
+
+        ops::PLP_IMPLIED          => "PLP",
+
+        ops::ROL_ACCUMULATOR      |
+        ops::ROL_ZERO_PAGE        |
+        ops::ROL_ZERO_PAGE_X      |
+        ops::ROL_ABSOLUTE         |
+        ops::ROL_ABSOLUTE_X       => "ROL",
+
+        ops::ROR_ACCUMULATOR      |
+        ops::ROR_ZERO_PAGE        |
+        ops::ROR_ZERO_PAGE_X      |
+        ops::ROR_ABSOLUTE         |
+        ops::ROR_ABSOLUTE_X       => "ROR",
+
+        ops::RTI_IMPLIED          => "RTI",
+
+        ops::RTS_IMPLIED          => "RTS",
+
+        ops::SBC_IMMEDIATE        |
+        ops::SBC_ZERO_PAGE        |
+        ops::SBC_ZERO_PAGE_X      |
+        ops::SBC_ABSOLUTE         |
+        ops::SBC_ABSOLUTE_X       |
+        ops::SBC_ABSOLUTE_Y       |
+        ops::SBC_INDIRECT_X       |
+        ops::SBC_INDIRECT_Y       => "SBC",
+
+        ops::SEC_IMPLIED          => "SEC",
+
+        ops::SED_IMPLIED          => "SED",
+
+        ops::SEI_IMPLIED          => "SEI",
+
+        ops::STA_ZERO_PAGE        |
+        ops::STA_ZERO_PAGE_X      |
+        ops::STA_ABSOLUTE         |
+        ops::STA_ABSOLUTE_X       |
+        ops::STA_ABSOLUTE_Y       |
+        ops::STA_INDIRECT_X       |
+        ops::STA_INDIRECT_Y       => "STA",
+
+        ops::STX_ZERO_PAGE        |
+        ops::STX_ZERO_PAGE_Y      |
+        ops::STX_ABSOLUTE         => "STX",
+
+        ops::STY_ZERO_PAGE        |
+        ops::STY_ZERO_PAGE_X      |
+        ops::STY_ABSOLUTE         => "STY",
+
+        ops::TAX_IMPLIED          => "TAX",
+
+        ops::TAY_IMPLIED          => "TAY",
+
+        ops::TYA_IMPLIED          => "TYA",
+
+        ops::TSX_IMPLIED          => "TSX",
+
+        ops::TXA_IMPLIED          => "TXA",
+
+        ops::TXS_IMPLIED          => "TXS",
+
+        ops::custom::PRT_ABSOLUTE => "PRT",
+
+        _                         => "UNKNOWN"
+    };
+
+    String::from(str)
+}
+
+pub fn addr_mode_to_operand(mode: &AddressMode, op8: u8, op16: u16) -> String {
+    match *mode {
+        AddressMode::Immediate   => format!("#0x{:X}", op8),
+        AddressMode::Absolute    => format!(" 0x{:X}", op16),
+        AddressMode::ZeroPage    => format!(" 0x{:X}", op8),
+        AddressMode::AbsoluteX   => format!(" 0x{:X}, X", op16),
+        AddressMode::ZeroPageX   => format!(" 0x{:X}, X", op8),
+        AddressMode::AbsoluteY   => format!(" 0x{:X}, Y", op16),
+        AddressMode::ZeroPageY   => format!(" 0x{:X}, Y", op8),
+        AddressMode::Indirect    => format!("(0x{:X})", op16),
+        AddressMode::IndirectX   => format!("(0x{:X}, X)", op8),
+        AddressMode::IndirectY   => format!("(0x{:X}), Y", op8),
+        AddressMode::Relative    => format!(" 0x{:X}", op8),
+        AddressMode::Accumulator => String::from("A"),
+        AddressMode::None        => String::from("")
+    }
+}
+
+pub fn op_to_str(cart: &Memory, idx: &mut usize) -> String {
+    let opcode = cart.read_u8(*idx);
+    let operand_u8 = cart.read_u8(*idx + 1);
+    let operand_u16 = cart.read_u16(*idx + 1);
+    let addr_mode = addr::get_addr_mode(opcode);
+
+    *idx = idx.wrapping_add(addr::pc_offset(&addr_mode));
+
+    let arg = addr_mode_to_operand(&addr_mode, operand_u8, operand_u16);
+    let name = op_name(opcode);
+
+    format!("{} {}", name, arg)
 }
