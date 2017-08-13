@@ -511,6 +511,7 @@ impl<M: Memory> Mcs6502<M> {
             AddressMode::ZeroPageX   => {
                 let mut addr = self.ram.read_u8(self.pc + 1) as usize;
                 addr = addr.wrapping_add(self.idx_x as usize);
+                addr &= 0xFF;
 
                 self.ram.write_u8(addr, operand);
             }
@@ -518,6 +519,7 @@ impl<M: Memory> Mcs6502<M> {
             AddressMode::ZeroPageY   => {
                 let mut addr = self.ram.read_u8(self.pc + 1) as usize;
                 addr = addr.wrapping_add(self.idx_y as usize);
+                addr &= 0xFF;
 
                 self.ram.write_u8(addr, operand);
             }
