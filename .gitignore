@@ -5,4 +5,4 @@ Cargo.lock
 tags
 /bin/*
 *.out
-/asm/*
+/*.a65
