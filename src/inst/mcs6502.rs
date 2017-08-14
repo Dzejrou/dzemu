@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use mems::Memory;
 use util;
 
@@ -651,9 +652,790 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
     (addr_mode, operand)
 }
 
-pub fn translate(command: String, out: &mut Vec<u8>) {
-    let command = command.trim();
-    let (op, arg) = command.split_at(4);
+pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
+    match op {
+        "ADC" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::ADC_IMMEDIATE
+                }
+                AddressMode::ZeroPage  => {
+                    ops::ADC_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::ADC_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::ADC_ABSOLUTE
+                }
+                AddressMode::AbsoluteX => {
+                    ops::ADC_ABSOLUTE_X
+                }
+                AddressMode::AbsoluteY => {
+                    ops::ADC_ABSOLUTE_Y
+                }
+                AddressMode::IndirectX => {
+                    ops::ADC_INDIRECT_X
+                }
+                AddressMode::IndirectY => {
+                    ops::ADC_INDIRECT_Y
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "AND" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::AND_IMMEDIATE
+                }
+                AddressMode::ZeroPage  => {
+                    ops::AND_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::AND_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::AND_ABSOLUTE
+                }
+                AddressMode::AbsoluteX => {
+                    ops::AND_ABSOLUTE_X
+                }
+                AddressMode::AbsoluteY => {
+                    ops::AND_ABSOLUTE_Y
+                }
+                AddressMode::IndirectX => {
+                    ops::AND_INDIRECT_X
+                }
+                AddressMode::IndirectY => {
+                    ops::AND_INDIRECT_Y
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "ASL" => {
+            match *mode {
+                AddressMode::Accumulator => {
+                    ops::ASL_ACCUMULATOR
+                }
+                AddressMode::ZeroPage    => {
+                    ops::ASL_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX   => {
+                    ops::ASL_ZERO_PAGE_X
+                }
+                AddressMode::Absolute    => {
+                    ops::ASL_ABSOLUTE
+                }
+                AddressMode::AbsoluteX   => {
+                    ops::ASL_ABSOLUTE_X
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "BCC" => {
+            match *mode {
+                AddressMode::Relative => {
+                    ops::BCC_RELATIVE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "BCS" => {
+            match *mode {
+                AddressMode::Relative => {
+                    ops::BCS_RELATIVE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "BEQ" => {
+            match *mode {
+                AddressMode::Relative => {
+                    ops::BEQ_RELATIVE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "BIT" => {
+            match *mode {
+                AddressMode::ZeroPage => {
+                    ops::BIT_ZERO_PAGE
+                }
+                AddressMode::Absolute => {
+                    ops::BIT_ABSOLUTE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "BMI" => {
+            match *mode {
+                AddressMode::Relative => {
+                    ops::BMI_RELATIVE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "BNE" => {
+            match *mode {
+                AddressMode::Relative => {
+                    ops::BNE_RELATIVE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "BPL" => {
+            match *mode {
+                AddressMode::Relative => {
+                    ops::BPL_RELATIVE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "BRK" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::BRK_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "BVC" => {
+            match *mode {
+                AddressMode::Relative => {
+                    ops::BVC_RELATIVE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "BVS" => {
+            match *mode {
+                AddressMode::Relative => {
+                    ops::BVS_RELATIVE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "CLC" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::CLC_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "CLD" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::CLD_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "CLI" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::CLI_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "CLV" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::CLV_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "CMP" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::CMP_IMMEDIATE
+                }
+                AddressMode::ZeroPage  => {
+                    ops::CMP_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::CMP_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::CMP_ABSOLUTE
+                }
+                AddressMode::AbsoluteX => {
+                    ops::CMP_ABSOLUTE_X
+                }
+                AddressMode::AbsoluteY => {
+                    ops::CMP_ABSOLUTE_Y
+                }
+                AddressMode::IndirectX => {
+                    ops::CMP_INDIRECT_X
+                }
+                AddressMode::IndirectY => {
+                    ops::CMP_INDIRECT_Y
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "CPX" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::CPX_IMMEDIATE
+                }
+                AddressMode::ZeroPage  => {
+                    ops::CPX_ZERO_PAGE
+                }
+                AddressMode::Absolute  => {
+                    ops::CPX_ABSOLUTE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "CPY" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::CPY_IMMEDIATE
+                }
+                AddressMode::ZeroPage  => {
+                    ops::CPY_ZERO_PAGE
+                }
+                AddressMode::Absolute  => {
+                    ops::CPY_ABSOLUTE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "DEC" => {
+            match *mode {
+                AddressMode::ZeroPage  => {
+                    ops::DEC_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::DEC_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::DEC_ABSOLUTE
+                }
+                AddressMode::AbsoluteX => {
+                    ops::DEC_ABSOLUTE_X
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "DEX" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::DEX_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "DEY" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::DEY_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "EOR" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::EOR_IMMEDIATE
+                }
+                AddressMode::ZeroPage  => {
+                    ops::EOR_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::EOR_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::EOR_ABSOLUTE
+                }
+                AddressMode::AbsoluteX => {
+                    ops::EOR_ABSOLUTE_X
+                }
+                AddressMode::AbsoluteY => {
+                    ops::EOR_ABSOLUTE_Y
+                }
+                AddressMode::IndirectX => {
+                    ops::EOR_INDIRECT_X
+                }
+                AddressMode::IndirectY => {
+                    ops::EOR_INDIRECT_Y
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "INC" => {
+            match *mode {
+                AddressMode::ZeroPage  => {
+                    ops::INC_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::INC_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::INC_ABSOLUTE
+                }
+                AddressMode::AbsoluteX => {
+                    ops::INC_ABSOLUTE_X
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "INX" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::INX_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "INY" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::INY_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "JMP" => {
+            match *mode {
+                AddressMode::Absolute => {
+                    ops::JMP_ABSOLUTE
+                }
+                AddressMode::Indirect => {
+                    ops::JMP_INDIRECT
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "JSR" => {
+            match *mode {
+                AddressMode::Absolute => {
+                    ops::JSR_ABSOLUTE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "LDA" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::LDA_IMMEDIATE
+                }
+                AddressMode::ZeroPage  => {
+                    ops::LDA_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::LDA_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::LDA_ABSOLUTE
+                }
+                AddressMode::AbsoluteX => {
+                    ops::LDA_ABSOLUTE_X
+                }
+                AddressMode::AbsoluteY => {
+                    ops::LDA_ABSOLUTE_Y
+                }
+                AddressMode::IndirectX => {
+                    ops::LDA_INDIRECT_X
+                }
+                AddressMode::IndirectY => {
+                    ops::LDA_INDIRECT_Y
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "LDX" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::LDX_IMMEDIATE
+                }
+                AddressMode::ZeroPage  => {
+                    ops::LDX_ZERO_PAGE
+                }
+                AddressMode::ZeroPageY => {
+                    ops::LDX_ZERO_PAGE_Y
+                }
+                AddressMode::Absolute  => {
+                    ops::LDX_ABSOLUTE
+                }
+                AddressMode::AbsoluteY => {
+                    ops::LDX_ABSOLUTE_Y
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "LDY" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::LDY_IMMEDIATE
+                }
+                AddressMode::ZeroPage  => {
+                    ops::LDY_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::LDY_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::LDY_ABSOLUTE
+                }
+                AddressMode::AbsoluteX => {
+                    ops::LDY_ABSOLUTE_X
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "LSR" => {
+            match *mode {
+                AddressMode::Accumulator => {
+                    ops::LSR_ACCUMULATOR
+                }
+                AddressMode::ZeroPage    => {
+                    ops::LSR_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX   => {
+                    ops::LSR_ZERO_PAGE_X
+                }
+                AddressMode::Absolute    => {
+                    ops::LSR_ABSOLUTE
+                }
+                AddressMode::AbsoluteX   => {
+                    ops::LSR_ABSOLUTE_X
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "NOP" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::NOP_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "ORA" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::ORA_IMMEDIATE
+                }
+                AddressMode::ZeroPage  => {
+                    ops::ORA_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::ORA_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::ORA_ABSOLUTE
+                }
+                AddressMode::AbsoluteX => {
+                    ops::ORA_ABSOLUTE_X
+                }
+                AddressMode::AbsoluteY => {
+                    ops::ORA_ABSOLUTE_Y
+                }
+                AddressMode::IndirectX => {
+                    ops::ORA_INDIRECT_X
+                }
+                AddressMode::IndirectY => {
+                    ops::ORA_INDIRECT_Y
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "PHA" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::PHA_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "PHP" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::PHP_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "PLA" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::PLA_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "PLP" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::PLP_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "ROL" => {
+            match *mode {
+                AddressMode::Accumulator => {
+                    ops::ROL_ACCUMULATOR
+                }
+                AddressMode::ZeroPage    => {
+                    ops::ROL_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX   => {
+                    ops::ROL_ZERO_PAGE_X
+                }
+                AddressMode::Absolute    => {
+                    ops::ROL_ABSOLUTE
+                }
+                AddressMode::AbsoluteX   => {
+                    ops::ROL_ABSOLUTE_X
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "ROR" => {
+            match *mode {
+                AddressMode::Accumulator => {
+                    ops::ROR_ACCUMULATOR
+                }
+                AddressMode::ZeroPage    => {
+                    ops::ROR_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX   => {
+                    ops::ROR_ZERO_PAGE_X
+                }
+                AddressMode::Absolute    => {
+                    ops::ROR_ABSOLUTE
+                }
+                AddressMode::AbsoluteX   => {
+                    ops::ROR_ABSOLUTE_X
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "RTI" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::RTI_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "RTS" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::RTS_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "SBC" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::SBC_IMMEDIATE
+                }
+                AddressMode::ZeroPage  => {
+                    ops::SBC_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::SBC_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::SBC_ABSOLUTE
+                }
+                AddressMode::AbsoluteX => {
+                    ops::SBC_ABSOLUTE_X
+                }
+                AddressMode::AbsoluteY => {
+                    ops::SBC_ABSOLUTE_Y
+                }
+                AddressMode::IndirectX => {
+                    ops::SBC_INDIRECT_X
+                }
+                AddressMode::IndirectY => {
+                    ops::SBC_INDIRECT_Y
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "SEC" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::SEC_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "SED" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::SED_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "SEI" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::SEI_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "STA" => {
+            match *mode {
+                AddressMode::ZeroPage  => {
+                    ops::STA_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::STA_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::STA_ABSOLUTE
+                }
+                AddressMode::AbsoluteX => {
+                    ops::STA_ABSOLUTE_X
+                }
+                AddressMode::AbsoluteY => {
+                    ops::STA_ABSOLUTE_Y
+                }
+                AddressMode::IndirectX => {
+                    ops::STA_INDIRECT_X
+                }
+                AddressMode::IndirectY => {
+                    ops::STA_INDIRECT_Y
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "STX" => {
+            match *mode {
+                AddressMode::ZeroPage  => {
+                    ops::STX_ZERO_PAGE
+                }
+                AddressMode::ZeroPageY => {
+                    ops::STX_ZERO_PAGE_Y
+                }
+                AddressMode::Absolute  => {
+                    ops::STX_ABSOLUTE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "STY" => {
+            match *mode {
+                AddressMode::ZeroPage  => {
+                    ops::STY_ZERO_PAGE
+                }
+                AddressMode::ZeroPageX => {
+                    ops::STY_ZERO_PAGE_X
+                }
+                AddressMode::Absolute  => {
+                    ops::STY_ABSOLUTE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "TAX" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::TAX_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "TAY" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::TAY_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "TYA" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::TYA_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "TSX" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::TXS_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "TXA" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::TXA_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "TXS" => {
+            match *mode {
+                AddressMode::Implied => {
+                    ops::TXS_IMPLIED
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        "PRT" => {
+            match *mode {
+                AddressMode::Absolute => {
+                    ops::custom::PRT_ABSOLUTE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
+        &_    => panic!("Unkown instruction: {}", op)
+    }
+}
+
+pub fn translate(command: String, out: &mut Vec<u8>,
+                 labels: &mut HashMap<String, u16>,
+                 jumps: &mut HashMap<u16, String>) {
+
+    // TODO: End of line comments won't work with this.
+    let mut command = command.trim();
+    let mut space_idx = 0;
+
+    match command.find(" ") {
+        Some(num) => space_idx = num,
+        None => panic!("Malformed command: {}", command)
+    }
+
+    let op;
+    let arg;
+
+    if space_idx != 3 {
+        let (label, rest) = command.split_at(space_idx);
+        match labels.insert(String::from(label), out.len() as u16) {
+            None => panic!("Redefinition of label {} in {}", label, command),
+            _    => ()
+        }
+
+        match rest.find(" ") {
+            Some(num) => space_idx = num,
+            None => panic!("Malformed command: {}", command)
+        }
+
+        let (op_, arg_) = rest.split_at(space_idx);
+        op = op_;
+        arg = arg_;
+    } else {
+        let (op_, arg_) = command.split_at(space_idx);
+        op = op_;
+        arg = arg_;
+    }
+
     let op = op.trim();
 
     let (addr_mode, operand) = parse_arguments(&arg);
@@ -910,26 +1692,22 @@ pub fn op_to_str(cart: &Memory, idx: &mut usize) -> String {
     format!("{} {}", name, arg)
 }
 
-pub mod generators {
-    use util;
+#[inline]
+pub fn push_one_byte(op: u8, buf: &mut Vec<u8>) {
+    buf.push(op);
+}
 
-    #[inline]
-    pub fn push_one_byte(op: u8, buf: &mut Vec<u8>) {
-        buf.push(op);
-    }
+#[inline]
+pub fn push_two_byte(op: u8, operand: u8, buf: &mut Vec<u8>) {
+    buf.push(op);
+    buf.push(operand);
+}
 
-    #[inline]
-    pub fn push_two_byte(op: u8, operand: u8, buf: &mut Vec<u8>) {
-        buf.push(op);
-        buf.push(operand);
-    }
-
-    #[inline]
-    pub fn push_three_byte(op: u8, operand: u16, buf: &mut Vec<u8>) {
-        buf.push(op);
-        buf.push(util::lower(operand));
-        buf.push(util::upper(operand));
-    }
+#[inline]
+pub fn push_three_byte(op: u8, operand: u16, buf: &mut Vec<u8>) {
+    buf.push(op);
+    buf.push(util::lower(operand));
+    buf.push(util::upper(operand));
 }
 
 #[cfg(test)]
@@ -1039,7 +1817,9 @@ pub mod tests {
     #[test]
     fn translate_commands() {
         let mut tmp: Vec<u8> = vec![1, 2, 3];
-        translate(String::from("AND *$FF, X"), &mut tmp);
+        let mut tmp2: HashMap<String, u16> = HashMap::new();
+        let mut tmp3: HashMap<u16, String> = HashMap::new();
+        translate(String::from("AND *$FF, X"), &mut tmp, &mut tmp2, &mut tmp3);
         assert!(false);
     }
 }
