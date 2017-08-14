@@ -485,6 +485,7 @@ impl<M: Memory> Mcs6502<M> {
             AddressMode::Accumulator => self.accu,
 
             AddressMode::Indirect    |
+            AddressMode::Implied     |
             AddressMode::None        => 0
         }
     }

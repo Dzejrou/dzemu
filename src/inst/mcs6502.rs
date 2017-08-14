@@ -1,7 +1,10 @@
 use mems::Memory;
+use util;
 
+// TODO: Add Implied to Mcs6502 emulator.
 #[derive(Debug, PartialEq)]
 pub enum AddressMode {
+    Implied,
     Immediate,
     ZeroPage,
     ZeroPageX,
@@ -180,6 +183,8 @@ pub mod addr {
 }
 
 pub mod ops {
+    use inst::mcs6502::AddressMode;
+
     // Add memory to accumulator with carry.
     pub const ADC_IMMEDIATE:   u8 = 0x69;
     pub const ADC_ZERO_PAGE:   u8 = 0x65;
@@ -446,6 +451,213 @@ pub mod ops {
     pub mod custom {
         pub const PRT_ABSOLUTE: u8 = 0xFF;
     }
+
+    pub enum Instruction {
+        ADC(AddressMode, u16),
+        AND(AddressMode, u16),
+        ASL(AddressMode, u16),
+        BCC(u8),
+        BCS(u8),
+        BEQ(u8),
+        BIT(AddressMode, u16),
+        BMI(u8),
+        BNE(u8),
+        BPL(u8),
+        BRK,
+        BVC(u8),
+        BVS(u8),
+        CLC,
+        CLD,
+        CLI,
+        CLV,
+        CMP(AddressMode, u16),
+        CPX(AddressMode, u16),
+        CPY(AddressMode, u16),
+        DEC(AddressMode, u16),
+        DEX,
+        DEY,
+        EOR(AddressMode, u16),
+        INC(AddressMode, u16),
+        INX,
+        INY,
+        JMP(AddressMode, u16),
+        JSR(u16),
+        LDA(AddressMode, u16),
+        LDX(AddressMode, u16),
+        LDY(AddressMode, u16),
+        LSR(AddressMode, u16),
+        NOP,
+        ORA(AddressMode, u16),
+        PHA,
+        PHP,
+        PLA,
+        PLP,
+        ROL(AddressMode, u16),
+        ROR(AddressMode, u16),
+        RTI,
+        RTS,
+        SBC(AddressMode, u16),
+        SEC,
+        SED,
+        SEI,
+        STA(AddressMode, u16),
+        STX(AddressMode, u16),
+        STY(AddressMode, u16),
+        TAX,
+        TAY,
+        TYA,
+        TSX,
+        TXA,
+        TXS,
+        PRT(u16)
+    }
+}
+
+fn extract_operand_u8(chars: &[char], off: u8) -> Option<u16> {
+    let off = off as usize;
+
+    if chars.len() >= off + 3  && chars[1] == '$' {
+        // Hexadecimal $XX.
+        let digit1 = chars[off + 1] as u8;
+        let digit2 = chars[off + 2] as u8;
+        util::u16_to_number(util::to_u16(digit1, digit2), 16)
+    } else if chars.len() >= off + 2 {
+        let digit1 = chars[off] as u8;
+        let digit2 = chars[off + 1] as u8;
+        util::u16_to_number(util::to_u16(digit1, digit2), 10)
+    } else {
+        None
+    }
+}
+
+fn extract_operand_u16(chars: &[char], off: u8) -> Option<u16> {
+    let off = off as usize;
+
+    if chars.len() >= off + 5  && chars[off] == '$' {
+        // Hexadecimal $XXXX.
+        let digit1 = chars[off + 1] as u8;
+        let digit2 = chars[off + 2] as u8;
+        let res1 = util::u16_to_number(util::to_u16(digit1, digit2), 16);
+
+        let digit1 = chars[off + 3] as u8;
+        let digit2 = chars[off + 4] as u8;
+        let res2 = util::u16_to_number(util::to_u16(digit1, digit2), 16);
+
+        let lower: u16;
+        let upper: u16;
+
+        match res1 {
+            Some(num) => upper = num,
+            None => return None
+        }
+
+        match res2 {
+            Some(num) => lower = num,
+            None => return None
+        }
+
+        Some((upper << 8) + lower)
+    } else if chars.len() >= off + 4 {
+        let digit1 = chars[off] as u8;
+        let digit2 = chars[off + 1] as u8;
+        let res1 = util::u16_to_number(util::to_u16(digit1, digit2), 10);
+
+        let digit1 = chars[off + 2] as u8;
+        let digit2 = chars[off + 3] as u8;
+        let res2 = util::u16_to_number(util::to_u16(digit1, digit2), 10);
+
+        let lower: u16;
+        let upper: u16;
+
+        match res1 {
+            Some(num) => upper = num,
+            None => return None
+        }
+
+        match res2 {
+            Some(num) => lower = num,
+            None => return None
+        }
+
+        Some((upper * 100) + lower)
+    } else {
+        None
+    }
+
+}
+
+pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
+    let mut chars: Vec<char> = arguments.chars().collect();
+    chars.retain(|c: &char| *c != ' ');
+
+    let mut addr_mode = AddressMode::None;
+    let mut operand = 0u16;
+
+    // TODO: Refactor this into a state automaton or something.
+    // TODO: Error reporting.
+    // TODO: Indirect addressing modes.
+    if chars.len() == 0 {
+        addr_mode = AddressMode::Implied;
+    } else if chars[0] == 'A' {
+        addr_mode = AddressMode::Accumulator;
+    } else if chars[0] == '#' {
+        // Implied
+        let res = extract_operand_u8(&chars, 1);
+        match res {
+            Some(num) => {
+                addr_mode = AddressMode::Immediate;
+                operand = num;
+            },
+            None => ()
+        }
+    } else if chars[0] == '*' {
+        // Zero page
+        if chars.len() > 2 {
+            let res = extract_operand_u8(&chars, 1);
+            match res {
+                Some(num) => {
+                    addr_mode = AddressMode::ZeroPage;
+                    operand = num;
+                },
+                None => ()
+            }
+        }
+
+        if chars[chars.len() - 1] == 'X' {
+            addr_mode = AddressMode::ZeroPageX;
+        } else if chars[chars.len() - 1] == 'Y' {
+            addr_mode = AddressMode::ZeroPageY;
+        }
+    } else if chars[0] == '(' {
+        // TODO: Indirect
+    } else if chars.len() > 3 {
+        // Absolute
+        let res = extract_operand_u16(&chars, 0);
+        match res {
+            Some(num) => {
+                addr_mode = AddressMode::Absolute;
+                operand = num;
+            },
+            None => ()
+        }
+
+        if chars[chars.len() - 1] == 'X' {
+            addr_mode = AddressMode::AbsoluteX;
+        } else if chars[chars.len() - 1] == 'Y' {
+            addr_mode = AddressMode::AbsoluteY;
+        }
+    }
+
+    (addr_mode, operand)
+}
+
+pub fn translate(command: String, out: &mut Vec<u8>) {
+    let command = command.trim();
+    let (op, arg) = command.split_at(4);
+    let op = op.trim();
+
+    let (addr_mode, operand) = parse_arguments(&arg);
+    println!("{}| {}: {:?} 0x{:X}", op, arg, addr_mode, operand);
 }
 
 pub fn op_name(opcode: u8) -> String {
@@ -679,6 +891,7 @@ pub fn addr_mode_to_operand(mode: &AddressMode, op8: u8, op16: u16) -> String {
         AddressMode::IndirectY   => format!("(0x{:X}), Y", op8),
         AddressMode::Relative    => format!(" 0x{:X}", op8),
         AddressMode::Accumulator => String::from("A"),
+        AddressMode::Implied     |
         AddressMode::None        => String::from("")
     }
 }
@@ -695,4 +908,138 @@ pub fn op_to_str(cart: &Memory, idx: &mut usize) -> String {
     let name = op_name(opcode);
 
     format!("{} {}", name, arg)
+}
+
+pub mod generators {
+    use util;
+
+    #[inline]
+    pub fn push_one_byte(op: u8, buf: &mut Vec<u8>) {
+        buf.push(op);
+    }
+
+    #[inline]
+    pub fn push_two_byte(op: u8, operand: u8, buf: &mut Vec<u8>) {
+        buf.push(op);
+        buf.push(operand);
+    }
+
+    #[inline]
+    pub fn push_three_byte(op: u8, operand: u16, buf: &mut Vec<u8>) {
+        buf.push(op);
+        buf.push(util::lower(operand));
+        buf.push(util::upper(operand));
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use inst::mcs6502::*;
+
+    #[test]
+    fn argument_parsing_implied() {
+        let args_good = String::from("");
+        let args_bad = String::from("$FF");
+
+        let (addr_mode, operand) = parse_arguments(&args_good);
+        assert_eq!(addr_mode, AddressMode::Implied);
+        assert_eq!(operand, 0);
+
+        let (addr_mode, operand) = parse_arguments(&args_bad);
+        assert_eq!(addr_mode, AddressMode::None);
+        assert_eq!(operand, 0);
+    }
+
+    #[test]
+    fn argument_parsing_accumulator() {
+        let args_good = String::from("A");
+        let args_bad = String::from("$FF");
+
+        let (addr_mode, operand) = parse_arguments(&args_good);
+        assert_eq!(addr_mode, AddressMode::Accumulator);
+        assert_eq!(operand, 0);
+
+        let (addr_mode, operand) = parse_arguments(&args_bad);
+        assert_eq!(addr_mode, AddressMode::None);
+        assert_eq!(operand, 0);
+    }
+
+    #[test]
+    fn argument_parsing_immediate() {
+        let args_hex = String::from("#$5A");
+        let args_dec = String::from("#49");
+        let args_bad = String::from("Hello!");
+        let args_hex_small = String::from("#$5a");
+
+        let (addr_mode, operand) = parse_arguments(&args_hex);
+        assert_eq!(addr_mode, AddressMode::Immediate);
+        assert_eq!(operand, 0x5A);
+
+        let (addr_mode, operand) = parse_arguments(&args_dec);
+        assert_eq!(addr_mode, AddressMode::Immediate);
+        assert_eq!(operand, 49);
+
+        let (addr_mode, operand) = parse_arguments(&args_bad);
+        assert_eq!(addr_mode, AddressMode::None);
+        assert_eq!(operand, 0);
+
+        let (addr_mode, operand) = parse_arguments(&args_hex_small);
+        assert_eq!(addr_mode, AddressMode::Immediate);
+        assert_eq!(operand, 0x5A);
+    }
+
+    #[test]
+    fn argument_parsing_zero_page() {
+        let args_good1 = String::from("*$A3");
+        let args_good2 = String::from("*63");
+        let args_x = String::from("*$C9, X");
+        let args_y = String::from("*17, Y");
+
+        let (addr_mode, operand) = parse_arguments(&args_good1);
+        assert_eq!(addr_mode, AddressMode::ZeroPage);
+        assert_eq!(operand, 0xA3);
+
+        let (addr_mode, operand) = parse_arguments(&args_good2);
+        assert_eq!(addr_mode, AddressMode::ZeroPage);
+        assert_eq!(operand, 63);
+
+        let (addr_mode, operand) = parse_arguments(&args_x);
+        assert_eq!(addr_mode, AddressMode::ZeroPageX);
+        assert_eq!(operand, 0xC9);
+
+        let (addr_mode, operand) = parse_arguments(&args_y);
+        assert_eq!(addr_mode, AddressMode::ZeroPageY);
+        assert_eq!(operand, 17);
+    }
+
+    #[test]
+    fn argument_parsing_absolute() {
+        let args_good1 = String::from("$12A3");
+        let args_good2 = String::from("4321"); // TODO: Max 64k?
+        let args_x = String::from("$32C9, X");
+        let args_y = String::from("1017, Y");
+
+        let (addr_mode, operand) = parse_arguments(&args_good1);
+        assert_eq!(addr_mode, AddressMode::Absolute);
+        assert_eq!(operand, 0x12A3);
+
+        let (addr_mode, operand) = parse_arguments(&args_good2);
+        assert_eq!(addr_mode, AddressMode::Absolute);
+        assert_eq!(operand, 4321);
+
+        let (addr_mode, operand) = parse_arguments(&args_x);
+        assert_eq!(addr_mode, AddressMode::AbsoluteX);
+        assert_eq!(operand, 0x32C9);
+
+        let (addr_mode, operand) = parse_arguments(&args_y);
+        assert_eq!(addr_mode, AddressMode::AbsoluteY);
+        assert_eq!(operand, 1017);
+    }
+
+    #[test]
+    fn translate_commands() {
+        let mut tmp: Vec<u8> = vec![1, 2, 3];
+        translate(String::from("AND *$FF, X"), &mut tmp);
+        assert!(false);
+    }
 }
