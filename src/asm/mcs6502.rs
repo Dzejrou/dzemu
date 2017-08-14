@@ -33,8 +33,11 @@ impl Assembler for Assembler6502 {
         let reader = BufReader::new(&file);
 
         for line in reader.lines() {
-            mcs6502::translate(line.unwrap(), &mut self.data,
-                               &mut self.labels, &mut self.jumps);
+            let line = line.unwrap();
+            if !line.is_empty() && !line.starts_with(";") {
+                mcs6502::translate(line, &mut self.data,
+                                   &mut self.labels, &mut self.jumps);
+            }
         }
     }
 

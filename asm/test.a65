@@ -1,3 +1,4 @@
+; Loads "HELLO" to the memory address 0x65.
 LDA #$48
 STA *$F0
 LDA #$45
@@ -8,5 +9,7 @@ LDA #$4C
 STA *$F3
 LDA #$4F
 STA *$F4
+
+; Prints the string to stdout.
 PRINT PRT  $00F0
-JMP  PRINT
+JMP  PRINT ; Indefinetly!
