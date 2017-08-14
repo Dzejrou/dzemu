@@ -96,6 +96,16 @@ pub fn u16_to_number(word: u16, base: u8) -> Option<u16> {
     Some(hi_byte * base + lo_byte)
 }
 
+pub fn is_valid_label(label: &str) -> bool {
+    for c in label.chars() {
+        if !c.is_alphabetic() {
+            return false;
+        }
+    }
+
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use util::*;

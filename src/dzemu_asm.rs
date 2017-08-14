@@ -1,6 +1,7 @@
 extern crate dzemu;
 
-use dzemu::util;
+use dzemu::asm::Assembler;
+use dzemu::asm::mcs6502::Assembler6502;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -9,7 +10,8 @@ fn main() {
         panic!("rom file not provided");
     }
 
-    let rom_data = util::read_rom(&args[1]);
-
-    util::dump_rom(&rom_data);
+    let mut asm = Assembler6502::new();
+    asm.assemble(&args[1]);
+    asm.link();
+    asm.output("test.out");
 }

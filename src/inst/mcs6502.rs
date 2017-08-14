@@ -1007,6 +1007,10 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Indirect => {
                     ops::JMP_INDIRECT
                 }
+                AddressMode::None     => {
+                    // Label jump.
+                    ops::JMP_ABSOLUTE
+                }
                 _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
             }
         }
@@ -1395,17 +1399,27 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
             }
         }
-        &_    => panic!("Unkown instruction: {}", op)
+        &_    => panic!("Unknown instruction: {}", op)
     }
 }
 
-pub fn translate(command: String, out: &mut Vec<u8>,
+pub fn translate(command: String, mut out: &mut Vec<u8>,
                  labels: &mut HashMap<String, u16>,
                  jumps: &mut HashMap<u16, String>) {
 
-    // TODO: End of line comments won't work with this.
-    let mut command = command.trim();
-    let mut space_idx = 0;
+    let cmd_tmp;
+    match command.find(";") {
+        Some(num) => {
+            let (cmd, _) = command.split_at(num);
+            cmd_tmp = String::from(cmd);
+        }
+        None => {
+            cmd_tmp = command;
+        }
+    }
+
+    let command = cmd_tmp.trim();
+    let mut space_idx;
 
     match command.find(" ") {
         Some(num) => space_idx = num,
@@ -1417,9 +1431,12 @@ pub fn translate(command: String, out: &mut Vec<u8>,
 
     if space_idx != 3 {
         let (label, rest) = command.split_at(space_idx);
+        let rest = rest.trim();
+
+        assert!(util::is_valid_label(label), "Invalid label.");
         match labels.insert(String::from(label), out.len() as u16) {
-            None => panic!("Redefinition of label {} in {}", label, command),
-            _    => ()
+            Some(_) => panic!("Redefinition of label {} in {}", label, command),
+            None    => ()
         }
 
         match rest.find(" ") {
@@ -1437,9 +1454,42 @@ pub fn translate(command: String, out: &mut Vec<u8>,
     }
 
     let op = op.trim();
-
+    let arg = arg.trim();
     let (addr_mode, operand) = parse_arguments(&arg);
-    println!("{}| {}: {:?} 0x{:X}", op, arg, addr_mode, operand);
+
+    let op = name_mode_to_opcode(op, &addr_mode);
+    match addr_mode {
+        AddressMode::Implied     => {
+            push_one_byte(op, &mut out);
+        }
+
+        AddressMode::Accumulator |
+        AddressMode::Relative    |
+        AddressMode::Immediate   |
+        AddressMode::IndirectX   |
+        AddressMode::IndirectY   |
+        AddressMode::ZeroPageX   |
+        AddressMode::ZeroPageY   |
+        AddressMode::ZeroPage    => {
+            push_two_byte(op, util::lower(operand), &mut out);
+        }
+
+        AddressMode::Absolute    |
+        AddressMode::AbsoluteX   |
+        AddressMode::AbsoluteY   |
+        AddressMode::Indirect    => {
+            push_three_byte(op, operand, &mut out);
+        }
+
+        AddressMode::None        => {
+            if util::is_valid_label(&arg) && op == ops::JMP_ABSOLUTE {
+                jumps.insert(out.len() as u16, String::from(arg));
+                push_three_byte(op, 0x00u16, &mut out);
+            } else {
+                panic!("AddressingMode::None as a result of {} translation.", command);
+            }
+        }
+    }
 }
 
 pub fn op_name(opcode: u8) -> String {
@@ -1816,10 +1866,10 @@ pub mod tests {
 
     #[test]
     fn translate_commands() {
-        let mut tmp: Vec<u8> = vec![1, 2, 3];
-        let mut tmp2: HashMap<String, u16> = HashMap::new();
-        let mut tmp3: HashMap<u16, String> = HashMap::new();
-        translate(String::from("AND *$FF, X"), &mut tmp, &mut tmp2, &mut tmp3);
-        assert!(false);
+        let mut output: Vec<u8> = Vec::new();
+        let mut labels: HashMap<String, u16> = HashMap::new();
+        let mut jumps: HashMap<u16, String> = HashMap::new();
+        translate(String::from("AND *$FF, X"), &mut output, &mut labels, &mut jumps);
+        assert_eq!(output, vec! [ops::AND_ZERO_PAGE_X, 0xFF]);
     }
 }
