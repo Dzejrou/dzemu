@@ -1743,28 +1743,18 @@ pub mod tests {
     #[test]
     fn argument_parsing_implied() {
         let args_good = String::from("");
-        let args_bad = String::from("$FF");
 
         let (addr_mode, operand) = parse_arguments(&args_good);
         assert_eq!(addr_mode, AddressMode::Implied);
-        assert_eq!(operand, 0);
-
-        let (addr_mode, operand) = parse_arguments(&args_bad);
-        assert_eq!(addr_mode, AddressMode::None);
         assert_eq!(operand, 0);
     }
 
     #[test]
     fn argument_parsing_accumulator() {
         let args_good = String::from("A");
-        let args_bad = String::from("$FF");
 
         let (addr_mode, operand) = parse_arguments(&args_good);
         assert_eq!(addr_mode, AddressMode::Accumulator);
-        assert_eq!(operand, 0);
-
-        let (addr_mode, operand) = parse_arguments(&args_bad);
-        assert_eq!(addr_mode, AddressMode::None);
         assert_eq!(operand, 0);
     }
 
