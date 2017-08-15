@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 use asm::Assembler;
 use inst::mcs6502;
@@ -72,26 +73,33 @@ impl Assembler6502 {
 
             let upper_line = line.to_uppercase();
             if upper_line.starts_with(".INCLUDE ") {
-                let (_, rest) = line.split_at(8);
-                let line = &rest[2..];
-                let file_end = match line.rfind("\"") {
-                    Some(num) => num,
-                    None => 0
-                };
-
-                if file_end == 0 {
-                    panic!("Invalid file include: {}", line);
-                }
-
-                let (file, _) = line.split_at(file_end);
-
-                if !file.is_empty() {
-                    self.assemble_file(file);
-                }
+                let file = self.get_include_file(&line, input);
+                self.assemble_file(file.to_str().unwrap());
             } else if !line.is_empty() && !line.starts_with(";") {
                 mcs6502::translate(&upper_line, &mut self.data,
                                    &mut self.labels, &mut self.jumps);
             }
+        }
+    }
+
+    fn get_include_file(&self, line: &str, input: &str) -> PathBuf {
+        let (_, rest) = line.split_at(8);
+        let line = &rest[2..];
+        let file_end = match line.rfind("\"") {
+            Some(num) => num,
+            None => 0
+        };
+
+        if file_end == 0 {
+            panic!("Invalid file include: {}", line);
+        }
+
+        let (file, _) = line.split_at(file_end);
+
+        let input_path = Path::new(input);
+        match input_path.parent() {
+            Some(parent) => parent.join(file),
+            None => Path::new(file).to_path_buf()
         }
     }
 }
