@@ -184,8 +184,6 @@ pub mod addr {
 }
 
 pub mod ops {
-    use inst::mcs6502::AddressMode;
-
     // Add memory to accumulator with carry.
     pub const ADC_IMMEDIATE:   u8 = 0x69;
     pub const ADC_ZERO_PAGE:   u8 = 0x65;
@@ -451,66 +449,6 @@ pub mod ops {
 
     pub mod custom {
         pub const PRT_ABSOLUTE: u8 = 0xFF;
-    }
-
-    pub enum Instruction {
-        ADC(AddressMode, u16),
-        AND(AddressMode, u16),
-        ASL(AddressMode, u16),
-        BCC(u8),
-        BCS(u8),
-        BEQ(u8),
-        BIT(AddressMode, u16),
-        BMI(u8),
-        BNE(u8),
-        BPL(u8),
-        BRK,
-        BVC(u8),
-        BVS(u8),
-        CLC,
-        CLD,
-        CLI,
-        CLV,
-        CMP(AddressMode, u16),
-        CPX(AddressMode, u16),
-        CPY(AddressMode, u16),
-        DEC(AddressMode, u16),
-        DEX,
-        DEY,
-        EOR(AddressMode, u16),
-        INC(AddressMode, u16),
-        INX,
-        INY,
-        JMP(AddressMode, u16),
-        JSR(u16),
-        LDA(AddressMode, u16),
-        LDX(AddressMode, u16),
-        LDY(AddressMode, u16),
-        LSR(AddressMode, u16),
-        NOP,
-        ORA(AddressMode, u16),
-        PHA,
-        PHP,
-        PLA,
-        PLP,
-        ROL(AddressMode, u16),
-        ROR(AddressMode, u16),
-        RTI,
-        RTS,
-        SBC(AddressMode, u16),
-        SEC,
-        SED,
-        SEI,
-        STA(AddressMode, u16),
-        STX(AddressMode, u16),
-        STY(AddressMode, u16),
-        TAX,
-        TAY,
-        TYA,
-        TSX,
-        TXA,
-        TXS,
-        PRT(u16)
     }
 }
 
