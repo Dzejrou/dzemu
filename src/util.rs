@@ -17,7 +17,8 @@ pub fn dump_rom(rom: &Memory) {
     println!("Rom contents:");
     let mut idx = 0;
     while idx < rom.size() {
-        println!("{}", mcs6502::op_to_str(rom, &mut idx));
+        let i = idx;
+        println!("0x{:04X}: {}", i, mcs6502::op_to_str(rom, &mut idx));
     }
     println!("-------------");
 }
