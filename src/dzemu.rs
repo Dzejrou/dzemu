@@ -1,7 +1,5 @@
 extern crate dzemu;
 
-use std::{thread, time};
-
 use dzemu::util;
 use dzemu::inst::mcs6502;
 use dzemu::cpus::Cpu;
@@ -31,6 +29,5 @@ fn main() {
 
     while cpu.running() {
         cpu.execute();
-        thread::sleep(time::Duration::from_secs(1));
     }
 }
