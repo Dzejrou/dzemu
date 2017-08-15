@@ -10,6 +10,12 @@ STA *$F3
 LDA #$4F
 STA *$F4
 
+; Setups index X for the loop.
+LDX #$05
+
 ; Prints the string to stdout.
 PRINT PRT  $F0
+DEX
+BEQ  $03
 JMP  PRINT ; Indefinetly!
+NOP

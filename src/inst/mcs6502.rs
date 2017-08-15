@@ -1374,41 +1374,52 @@ pub fn translate(command: String, mut out: &mut Vec<u8>,
     let command = cmd_tmp.trim();
     let mut space_idx;
 
-    match command.find(" ") {
-        Some(num) => space_idx = num,
-        None => panic!("Malformed command: {}", command)
-    }
-
     let op;
     let arg;
 
-    if space_idx != 3 {
-        let (label, rest) = command.split_at(space_idx);
-        let rest = rest.trim();
-
-        assert!(util::is_valid_label(label), "Invalid label.");
-        match labels.insert(String::from(label), out.len() as u16) {
-            Some(_) => panic!("Redefinition of label {} in {}", label, command),
-            None    => ()
-        }
-
-        match rest.find(" ") {
+    if command.len() > 3 {
+        match command.find(" ") {
             Some(num) => space_idx = num,
             None => panic!("Malformed command: {}", command)
         }
 
-        let (op_, arg_) = rest.split_at(space_idx);
-        op = op_;
-        arg = arg_;
+        if space_idx != 3 {
+            let (label, rest) = command.split_at(space_idx);
+            let rest = rest.trim();
+
+            assert!(util::is_valid_label(label), "Invalid label.");
+            match labels.insert(String::from(label), out.len() as u16) {
+                Some(_) => panic!("Redefinition of label {} in {}", label, command),
+                None    => ()
+            }
+
+            match rest.find(" ") {
+                Some(num) => space_idx = num,
+                None => panic!("Malformed command: {}", command)
+            }
+
+            let (op_, arg_) = rest.split_at(space_idx);
+            op = op_;
+            arg = arg_;
+        } else {
+            let (op_, arg_) = command.split_at(space_idx);
+            op = op_;
+            arg = arg_;
+        }
     } else {
-        let (op_, arg_) = command.split_at(space_idx);
-        op = op_;
-        arg = arg_;
+        op = command;
+        arg = "";
     }
 
     let op = op.trim();
     let arg = arg.trim();
     let (addr_mode, operand) = parse_arguments(&arg);
+    let mut addr_mode = addr_mode;
+
+    if op.starts_with("B") && addr_mode == AddressMode::Absolute {
+        // Relative and 2 digit absolute don't differ in assembly :/
+        addr_mode = AddressMode::Relative;
+    }
 
     let op = name_mode_to_opcode(op, &addr_mode);
     match addr_mode {
@@ -1683,8 +1694,20 @@ pub fn addr_mode_to_operand(mode: &AddressMode, op8: u8, op16: u16) -> String {
 
 pub fn op_to_str(cart: &Memory, idx: &mut usize) -> String {
     let opcode = cart.read_u8(*idx);
-    let operand_u8 = cart.read_u8(*idx + 1);
-    let operand_u16 = cart.read_u16(*idx + 1);
+    let operand_u8;
+    let operand_u16;
+
+    if *idx + 1 < cart.size() {
+        operand_u8 = cart.read_u8(*idx + 1);
+    } else {
+        operand_u8 = 0;
+    }
+
+    if *idx + 2 < cart.size() {
+        operand_u16 = cart.read_u16(*idx + 1);
+    } else {
+        operand_u16 = 0;
+    }
     let addr_mode = addr::get_addr_mode(opcode);
 
     *idx = idx.wrapping_add(addr::pc_offset(&addr_mode));

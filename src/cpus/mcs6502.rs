@@ -568,12 +568,7 @@ impl<M: Memory> Mcs6502<M> {
 
     fn branch(&mut self, cond: bool, offset: u8) {
         if cond {
-            let soff = offset as i8;
-            let mut spc = self.pc as isize;
-            spc += soff as isize;
-            spc -= addr::pc_offset(&self.addr_mode) as isize;
-
-            self.pc = spc as usize;
+            self.pc = self.pc.wrapping_add(offset as usize);
         }
     }
 
