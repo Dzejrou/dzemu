@@ -1,7 +1,7 @@
 ; Prints the string to stdout.
 print:
-PRT  $F0
+PRT $F0
 DEX
-BEQ  $03
-JMP  print
+BEQ $03
+JMP print
 RTS

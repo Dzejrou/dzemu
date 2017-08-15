@@ -1721,17 +1721,17 @@ pub fn op_name(opcode: u8) -> String {
 
 pub fn addr_mode_to_operand(mode: &AddressMode, op8: u8, op16: u16) -> String {
     match *mode {
-        AddressMode::Immediate   => format!("#0x{:X}", op8),
-        AddressMode::Absolute    => format!(" 0x{:X}", op16),
-        AddressMode::ZeroPage    => format!("*0x{:X}", op8),
-        AddressMode::AbsoluteX   => format!(" 0x{:X}, X", op16),
-        AddressMode::ZeroPageX   => format!("*0x{:X}, X", op8),
-        AddressMode::AbsoluteY   => format!(" 0x{:X}, Y", op16),
-        AddressMode::ZeroPageY   => format!("*0x{:X}, Y", op8),
-        AddressMode::Indirect    => format!("(0x{:X})", op16),
-        AddressMode::IndirectX   => format!("(0x{:X}, X)", op8),
-        AddressMode::IndirectY   => format!("(0x{:X}), Y", op8),
-        AddressMode::Relative    => format!(" 0x{:X}", op8),
+        AddressMode::Immediate   => format!("#${:02X}", op8),
+        AddressMode::Absolute    => format!("${:04X}", op16),
+        AddressMode::ZeroPage    => format!("*${:02X}", op8),
+        AddressMode::AbsoluteX   => format!("${:04X}, X", op16),
+        AddressMode::ZeroPageX   => format!("*${:02X}, X", op8),
+        AddressMode::AbsoluteY   => format!("${:04X}, Y", op16),
+        AddressMode::ZeroPageY   => format!("*${:02X}, Y", op8),
+        AddressMode::Indirect    => format!("(${:04X})", op16),
+        AddressMode::IndirectX   => format!("(${:02X}, X)", op8),
+        AddressMode::IndirectY   => format!("(${:02X}), Y", op8),
+        AddressMode::Relative    => format!("${:02X}", op8),
         AddressMode::Accumulator => String::from("A"),
         AddressMode::Implied     |
         AddressMode::None        => String::from("")
