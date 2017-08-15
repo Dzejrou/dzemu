@@ -1,6 +1,9 @@
 use std::fs::File;
 use std::io::Read;
 
+use mems::Memory;
+use inst::mcs6502;
+
 pub fn read_rom(fname: &str) -> Vec<u8> {
     let rom_file = match File::open(fname) {
         Ok(file) => file,
@@ -10,10 +13,13 @@ pub fn read_rom(fname: &str) -> Vec<u8> {
     rom_file.bytes().map(|b| b.unwrap()).collect()
 }
 
-pub fn dump_rom(rom: &Vec<u8>) {
-    for instr in rom.iter() {
-        println!("{}", instr);
+pub fn dump_rom(rom: &Memory) {
+    println!("Rom contents:");
+    let mut idx = 0;
+    while idx < rom.size() {
+        println!("{}", mcs6502::op_to_str(rom, &mut idx));
     }
+    println!("-------------");
 }
 
 #[inline]
