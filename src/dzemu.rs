@@ -29,7 +29,7 @@ fn main() {
     let mut cpu = Mcs6502::new(Ram8b::new(64 * 1024));
     cpu.boot(&rom);
 
-    loop {
+    while cpu.running() {
         cpu.execute();
         thread::sleep(time::Duration::from_secs(1));
     }

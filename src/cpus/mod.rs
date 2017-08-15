@@ -10,6 +10,7 @@ pub trait Cpu<M: Memory> {
     fn run(&mut self, usize);
     fn dump(&self);
     fn pc(&self) -> usize;
+    fn running(&self) -> bool;
 }
 
 pub trait Stack {

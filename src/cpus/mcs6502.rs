@@ -47,7 +47,8 @@ pub struct Mcs6502<M: Memory> {
     idx_y: u8,
     accu: u8,
     addr_mode: AddressMode,
-    status: u8
+    status: u8,
+    rom_end: usize
 }
 
 impl<M: Memory> Cpu<M> for Mcs6502<M> {
@@ -59,6 +60,7 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
         self.restart();
 
         self.ram.map(ROM_MAP_ADDRESS, cart);
+        self.rom_end = ROM_MAP_ADDRESS + cart.size();
     }
 
     fn restart(&mut self) {
@@ -331,6 +333,10 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
         // the rom mapping block.
         self.pc - ROM_MAP_ADDRESS
     }
+
+    fn running(&self) -> bool {
+        self.pc_valid()
+    }
 }
 
 impl<M: Memory> Stack for Mcs6502<M> {
@@ -381,7 +387,8 @@ impl<M: Memory> Mcs6502<M> {
             idx_y: 0u8,
             accu: 0u8,
             addr_mode: AddressMode::None,
-            status: 0u8
+            status: 0u8,
+            rom_end: 0
         }
     }
 
@@ -395,6 +402,10 @@ impl<M: Memory> Mcs6502<M> {
 
     pub fn set_int_nomask_addr(&mut self, addr: u16) {
         self.ram.write_u16(INT_NOMASK_ADDRESS, addr);
+    }
+
+    fn pc_valid(&self) -> bool {
+        self.pc >= ROM_MAP_ADDRESS && self.pc < self.rom_end
     }
 
     pub fn interrupt(&mut self) {
