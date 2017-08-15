@@ -1364,9 +1364,15 @@ fn can_jump_to_label(op: u8) -> bool {
     op == ops::JMP_ABSOLUTE || op == ops::JSR_ABSOLUTE
 }
 
-pub fn translate(command: String, mut out: &mut Vec<u8>,
+pub fn translate(command: &str, mut out: &mut Vec<u8>,
                  labels: &mut HashMap<String, u16>,
                  jumps: &mut HashMap<u16, String>) {
+    if util::is_valid_label(command, true) {
+        match labels.insert(String::from(command), out.len() as u16) {
+            Some(_) => panic!("Redefinition of label in {}", command),
+            None    => ()
+        }
+    }
 
     let cmd_tmp;
     match command.find(";") {
@@ -1375,7 +1381,7 @@ pub fn translate(command: String, mut out: &mut Vec<u8>,
             cmd_tmp = String::from(cmd);
         }
         None => {
-            cmd_tmp = command;
+            cmd_tmp = String::from(command);
         }
     }
 

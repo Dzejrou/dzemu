@@ -28,10 +28,17 @@ impl Assembler for Assembler6502 {
         self.labels.clear();
         self.jumps.clear();
 
+        mcs6502::translate("JMP START", &mut self.data,
+                           &mut self.labels, &mut self.jumps);
+
         self.assemble_file(input);
     }
 
     fn link(&mut self) {
+        if !self.labels.contains_key("start:") {
+            panic!("Start label not defined.");
+        }
+
         for (&addr, label) in self.jumps.iter() {
             match self.labels.get(label) {
                 Some(&target) => {
@@ -82,7 +89,7 @@ impl Assembler6502 {
                     self.assemble_file(file);
                 }
             } else if !line.is_empty() && !line.starts_with(";") {
-                mcs6502::translate(upper_line, &mut self.data,
+                mcs6502::translate(&upper_line, &mut self.data,
                                    &mut self.labels, &mut self.jumps);
             }
         }

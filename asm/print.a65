@@ -1,5 +1,4 @@
 ; Prints the string to stdout.
-JMP start
 print: PRT  $F0
 DEX
 BEQ  $03
