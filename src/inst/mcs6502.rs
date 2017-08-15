@@ -31,7 +31,8 @@ pub mod addr {
             AddressMode::AbsoluteX |
             AddressMode::AbsoluteY |
             AddressMode::Indirect  => 3,
-            AddressMode::None      => 1,
+            AddressMode::Implied   => 1,
+            AddressMode::None      => 0,
             _                      => 2,
         }
     }
@@ -175,6 +176,32 @@ pub mod addr {
             ops::LSR_ACCUMULATOR |
             ops::ROL_ACCUMULATOR |
             ops::ROR_ACCUMULATOR => AddressMode::Accumulator,
+
+            ops::BRK_IMPLIED     |
+            ops::CLC_IMPLIED     |
+            ops::CLD_IMPLIED     |
+            ops::CLI_IMPLIED     |
+            ops::CLV_IMPLIED     |
+            ops::DEX_IMPLIED     |
+            ops::DEY_IMPLIED     |
+            ops::INX_IMPLIED     |
+            ops::INY_IMPLIED     |
+            ops::NOP_IMPLIED     |
+            ops::PHA_IMPLIED     |
+            ops::PHP_IMPLIED     |
+            ops::PLA_IMPLIED     |
+            ops::PLP_IMPLIED     |
+            ops::RTI_IMPLIED     |
+            ops::RTS_IMPLIED     |
+            ops::SEC_IMPLIED     |
+            ops::SED_IMPLIED     |
+            ops::SEI_IMPLIED     |
+            ops::TAX_IMPLIED     |
+            ops::TAY_IMPLIED     |
+            ops::TYA_IMPLIED     |
+            ops::TSX_IMPLIED     |
+            ops::TXA_IMPLIED     |
+            ops::TXS_IMPLIED     => AddressMode::Implied,
 
             ops::custom::PRT_ABSOLUTE => AddressMode::Absolute,
 
