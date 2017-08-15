@@ -2,7 +2,7 @@
 .include "asm/print.a65"
 
 ; Loads "HELLO" to the memory address 0xFO.
-START LDA #$48
+start: LDA #$48
 STA *$F0
 LDA #$45
 STA *$F1
@@ -17,7 +17,7 @@ STA *$F4
 LDX #$05
 
 ; Prints the string to stdout.
-JSR PRINT
+JSR print
 
 ; Loads "HALLO" to the memory address 0xF0.
 LDA #$48
@@ -35,4 +35,4 @@ STA *$F4
 LDX #$05
 
 ; Prints the string to stdout.
-JSR PRINT
+JSR print

@@ -1395,9 +1395,13 @@ pub fn translate(command: String, mut out: &mut Vec<u8>,
             let (label, rest) = command.split_at(space_idx);
             let rest = rest.trim();
 
-            assert!(util::is_valid_label(label), "Invalid label: {}.", label);
-            match labels.insert(String::from(label), out.len() as u16) {
-                Some(_) => panic!("Redefinition of label {} in {}", label, command),
+            let mut label = String::from(label).to_lowercase();
+            assert!(util::is_valid_label(&label, true), "Invalid label: {}.", label);
+            if !label.ends_with(":") {
+                label.push_str(":");
+            }
+            match labels.insert(label, out.len() as u16) {
+                Some(_) => panic!("Redefinition of label in {}", command),
                 None    => ()
             }
 
@@ -1454,9 +1458,8 @@ pub fn translate(command: String, mut out: &mut Vec<u8>,
         }
 
         AddressMode::None        => {
-            // TODO: Make label declaration end with :, but label jump not (bool arg?).
-            if util::is_valid_label(&arg) && can_jump_to_label(op) {
-                jumps.insert(out.len() as u16, String::from(arg));
+            if util::is_valid_label(&arg, false) && can_jump_to_label(op) {
+                jumps.insert(out.len() as u16, String::from(arg).to_lowercase() + &":");
                 push_three_byte(op, 0x00u16, &mut out);
             } else {
                 panic!("AddressingMode::None as a result of {} translation.", command);
