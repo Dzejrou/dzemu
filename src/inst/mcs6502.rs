@@ -1360,6 +1360,28 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
     }
 }
 
+pub fn is_valid_instruction(op: &str) -> bool {
+    match op {
+        "ADC" | "AND" | "ASL" | "BCC" | "BCS" |
+        "BEQ" | "BIT" | "BMI" | "BNE" | "BPL" |
+        "BRK" | "BVC" | "BVS" | "CLC" | "CLD" |
+        "CLI" | "CLV" | "CMP" | "CPX" | "CPY" |
+        "DEC" | "DEX" | "DEY" | "EOR" | "INC" |
+        "INX" | "INY" | "JMP" | "JSR" | "LDA" |
+        "LDX" | "LDY" | "LSR" | "NOP" | "ORA" |
+        "PHA" | "PHP" | "PLA" | "PLP" | "ROL" |
+        "ROR" | "RTI" | "RTS" | "SBC" | "SEC" |
+        "SED" | "SEI" | "STA" | "STX" | "STY" |
+        "TAX" | "TAY" | "TYA" | "TSX" | "TXA" |
+        "TXS" | "PRT" => true,
+        &_            => false
+    }
+}
+
+fn is_valid_label(label: &str, decl: bool) -> bool {
+    !is_valid_instruction(label) && util::is_valid_label(label, decl)
+}
+
 fn can_jump_to_label(op: u8) -> bool {
     op == ops::JMP_ABSOLUTE || op == ops::JSR_ABSOLUTE
 }
@@ -1367,11 +1389,17 @@ fn can_jump_to_label(op: u8) -> bool {
 pub fn translate(command: &str, mut out: &mut Vec<u8>,
                  labels: &mut HashMap<String, u16>,
                  jumps: &mut HashMap<u16, String>) {
-    if util::is_valid_label(command, true) {
-        match labels.insert(String::from(command), out.len() as u16) {
+    if is_valid_label(command, true) {
+        let mut label = String::from(command);
+        if !label.ends_with(":") {
+            label.push_str(":");
+        }
+
+        match labels.insert(label, out.len() as u16) {
             Some(_) => panic!("Redefinition of label in {}", command),
             None    => ()
         }
+        return;
     }
 
     let cmd_tmp;
@@ -1402,7 +1430,7 @@ pub fn translate(command: &str, mut out: &mut Vec<u8>,
             let rest = rest.trim();
 
             let mut label = String::from(label).to_lowercase();
-            assert!(util::is_valid_label(&label, true), "Invalid label: {}.", label);
+            assert!(is_valid_label(&label, true), "Invalid label: {}.", label);
             if !label.ends_with(":") {
                 label.push_str(":");
             }
@@ -1464,8 +1492,8 @@ pub fn translate(command: &str, mut out: &mut Vec<u8>,
         }
 
         AddressMode::None        => {
-            if util::is_valid_label(&arg, false) && can_jump_to_label(op) {
-                jumps.insert(out.len() as u16, String::from(arg).to_lowercase() + &":");
+            if is_valid_label(&arg, false) && can_jump_to_label(op) {
+                jumps.insert(out.len() as u16, String::from(arg).to_uppercase() + &":");
                 push_three_byte(op, 0x00u16, &mut out);
             } else {
                 panic!("AddressingMode::None as a result of {} translation.", command);

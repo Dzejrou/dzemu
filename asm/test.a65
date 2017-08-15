@@ -2,7 +2,8 @@
 .include "print.a65"
 
 ; Loads "HELLO" to the memory address 0xFO.
-start: LDA #$48
+start:
+LDA #$48
 STA *$F0
 LDA #$45
 STA *$F1

@@ -36,7 +36,7 @@ impl Assembler for Assembler6502 {
     }
 
     fn link(&mut self) {
-        if !self.labels.contains_key("start:") {
+        if !self.labels.contains_key("START:") {
             panic!("Start label not defined.");
         }
 

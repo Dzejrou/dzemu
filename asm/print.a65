@@ -1,5 +1,6 @@
 ; Prints the string to stdout.
-print: PRT  $F0
+print:
+PRT  $F0
 DEX
 BEQ  $03
 JMP  print
