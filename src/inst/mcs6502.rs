@@ -972,6 +972,10 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute => {
                     ops::JSR_ABSOLUTE
                 }
+                AddressMode::None     => {
+                    // Label jump.
+                    ops::JSR_ABSOLUTE
+                }
                 _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
             }
         }
@@ -1356,6 +1360,10 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
     }
 }
 
+fn can_jump_to_label(op: u8) -> bool {
+    op == ops::JMP_ABSOLUTE || op == ops::JSR_ABSOLUTE
+}
+
 pub fn translate(command: String, mut out: &mut Vec<u8>,
                  labels: &mut HashMap<String, u16>,
                  jumps: &mut HashMap<u16, String>) {
@@ -1387,7 +1395,7 @@ pub fn translate(command: String, mut out: &mut Vec<u8>,
             let (label, rest) = command.split_at(space_idx);
             let rest = rest.trim();
 
-            assert!(util::is_valid_label(label), "Invalid label.");
+            assert!(util::is_valid_label(label), "Invalid label: {}.", label);
             match labels.insert(String::from(label), out.len() as u16) {
                 Some(_) => panic!("Redefinition of label {} in {}", label, command),
                 None    => ()
@@ -1446,7 +1454,8 @@ pub fn translate(command: String, mut out: &mut Vec<u8>,
         }
 
         AddressMode::None        => {
-            if util::is_valid_label(&arg) && op == ops::JMP_ABSOLUTE {
+            // TODO: Make label declaration end with :, but label jump not (bool arg?).
+            if util::is_valid_label(&arg) && can_jump_to_label(op) {
                 jumps.insert(out.len() as u16, String::from(arg));
                 push_three_byte(op, 0x00u16, &mut out);
             } else {

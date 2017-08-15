@@ -28,17 +28,7 @@ impl Assembler for Assembler6502 {
         self.labels.clear();
         self.jumps.clear();
 
-        let file = File::open(input).
-            expect("Unable to open input file.");
-        let reader = BufReader::new(&file);
-
-        for line in reader.lines() {
-            let line = line.unwrap();
-            if !line.is_empty() && !line.starts_with(";") {
-                mcs6502::translate(line, &mut self.data,
-                                   &mut self.labels, &mut self.jumps);
-            }
-        }
+        self.assemble_file(input);
     }
 
     fn link(&mut self) {
@@ -60,5 +50,41 @@ impl Assembler for Assembler6502 {
             .expect("Cannot create output file.");
         writer.write_all(&self.data)
             .expect("Cannot write to output file.");
+    }
+}
+
+impl Assembler6502 {
+    fn assemble_file(&mut self, input: &str) {
+        let file = File::open(input).
+            expect(&format!("Unable to open input file: {}", input));
+        let reader = BufReader::new(&file);
+
+        for line in reader.lines() {
+            let line = line.unwrap();
+            let line = line.trim();
+
+            let upper_line = line.to_uppercase();
+            if upper_line.starts_with(".INCLUDE ") {
+                let (_, rest) = line.split_at(8);
+                let line = &rest[2..];
+                let file_end = match line.rfind("\"") {
+                    Some(num) => num,
+                    None => 0
+                };
+
+                if file_end == 0 {
+                    panic!("Invalid file include: {}", line);
+                }
+
+                let (file, _) = line.split_at(file_end);
+
+                if !file.is_empty() {
+                    self.assemble_file(file);
+                }
+            } else if !line.is_empty() && !line.starts_with(";") {
+                mcs6502::translate(upper_line, &mut self.data,
+                                   &mut self.labels, &mut self.jumps);
+            }
+        }
     }
 }

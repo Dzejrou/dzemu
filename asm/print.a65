@@ -1,0 +1,7 @@
+; Prints the string to stdout.
+JMP START
+PRINT PRT  $F0
+DEX
+BEQ  $03
+JMP  PRINT
+RTS

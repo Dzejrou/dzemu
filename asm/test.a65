@@ -1,5 +1,8 @@
-; Loads "HELLO" to the memory address 0x65.
-LDA #$48
+; TODO: Add relative includes!
+.include "asm/print.a65"
+
+; Loads "HELLO" to the memory address 0xFO.
+START LDA #$48
 STA *$F0
 LDA #$45
 STA *$F1
@@ -14,8 +17,22 @@ STA *$F4
 LDX #$05
 
 ; Prints the string to stdout.
-PRINT PRT  $F0
-DEX
-BEQ  $03
-JMP  PRINT ; Indefinetly!
-NOP
+JSR PRINT
+
+; Loads "HALLO" to the memory address 0xF0.
+LDA #$48
+STA *$F0
+LDA #$41
+STA *$F1
+LDA #$4C
+STA *$F2
+LDA #$4C
+STA *$F3
+LDA #$4F
+STA *$F4
+
+; Setups index X for the loop.
+LDX #$05
+
+; Prints the string to stdout.
+JSR PRINT
