@@ -1117,7 +1117,7 @@ mod tests {
         assert_eq!(cpu.pc(), target);
 
         // Succeed at branching.
-        target += 0x0A;
+        target += 0x0A + 2;
         cpu.set_flag(cond, flag);
         cpu.execute();
         assert_eq!(cpu.pc(), target);
