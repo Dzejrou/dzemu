@@ -11,5 +11,5 @@ LDA #$4F
 STA *$F4
 
 ; Prints the string to stdout.
-PRINT PRT  $00F0
+PRINT PRT  $F0
 JMP  PRINT ; Indefinetly!

@@ -515,76 +515,64 @@ pub mod ops {
 }
 
 fn extract_operand_u8(chars: &[char], off: u8) -> Option<u16> {
-    let off = off as usize;
+    let mut off = off as usize;
 
-    if chars.len() >= off + 3  && chars[1] == '$' {
-        // Hexadecimal $XX.
-        let digit1 = chars[off + 1] as u8;
-        let digit2 = chars[off + 2] as u8;
-        util::u16_to_number(util::to_u16(digit1, digit2), 16)
+    let base;
+    if chars.len() >= off + 3 && chars[off] == '$' {
+        off += 1;
+        base = 16;
     } else if chars.len() >= off + 2 {
-        let digit1 = chars[off] as u8;
-        let digit2 = chars[off + 1] as u8;
-        util::u16_to_number(util::to_u16(digit1, digit2), 10)
+        base = 10;
     } else {
-        None
+        return None;
     }
+
+    let digit1 = chars[off] as u8;
+    let digit2 = chars[off + 1] as u8;
+    util::u16_to_number(util::to_u16(digit1, digit2), base)
 }
 
 fn extract_operand_u16(chars: &[char], off: u8) -> Option<u16> {
-    let off = off as usize;
+    let mut off = off as usize;
+    let base;
 
-    if chars.len() >= off + 5  && chars[off] == '$' {
-        // Hexadecimal $XXXX.
-        let digit1 = chars[off + 1] as u8;
-        let digit2 = chars[off + 2] as u8;
-        let res1 = util::u16_to_number(util::to_u16(digit1, digit2), 16);
-
-        let digit1 = chars[off + 3] as u8;
-        let digit2 = chars[off + 4] as u8;
-        let res2 = util::u16_to_number(util::to_u16(digit1, digit2), 16);
-
-        let lower: u16;
-        let upper: u16;
-
-        match res1 {
-            Some(num) => upper = num,
-            None => return None
-        }
-
-        match res2 {
-            Some(num) => lower = num,
-            None => return None
-        }
-
-        Some((upper << 8) + lower)
+    if chars.len() >= off + 5 && chars[off] == '$' {
+        off += 1;
+        base = 16;
     } else if chars.len() >= off + 4 {
-        let digit1 = chars[off] as u8;
-        let digit2 = chars[off + 1] as u8;
-        let res1 = util::u16_to_number(util::to_u16(digit1, digit2), 10);
-
-        let digit1 = chars[off + 2] as u8;
-        let digit2 = chars[off + 3] as u8;
-        let res2 = util::u16_to_number(util::to_u16(digit1, digit2), 10);
-
-        let lower: u16;
-        let upper: u16;
-
-        match res1 {
-            Some(num) => upper = num,
-            None => return None
-        }
-
-        match res2 {
-            Some(num) => lower = num,
-            None => return None
-        }
-
-        Some((upper * 100) + lower)
+        base = 10
+    } else if chars.len() >= off + 2 {
+        return extract_operand_u8(chars, off as u8);
     } else {
-        None
+        return None;
     }
 
+    let digit1 = chars[off] as u8;
+    let digit2 = chars[off + 1] as u8;
+    let res1 = util::u16_to_number(util::to_u16(digit1, digit2), base);
+
+    let digit1 = chars[off + 2] as u8;
+    let digit2 = chars[off + 3] as u8;
+    let res2 = util::u16_to_number(util::to_u16(digit1, digit2), base);
+
+    let lower: u16;
+    let upper: u16;
+
+    match res1 {
+        Some(num) => upper = num,
+        None => return None
+    }
+
+    match res2 {
+        Some(num) => lower = num,
+        None => return None
+    }
+
+    if base == 16 {
+        Some((upper << 8) + lower)
+    } else {
+        Some((upper * 100) + lower)
+    }
 }
 
 pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
@@ -631,7 +619,7 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
         }
     } else if chars[0] == '(' {
         // TODO: Indirect
-    } else if chars.len() > 3 {
+    } else if chars.len() > 2 {
         // Absolute
         let res = extract_operand_u16(&chars, 0);
         match res {
