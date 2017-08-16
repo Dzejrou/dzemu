@@ -2,6 +2,33 @@
 print:
 PRT $F0
 DEX
-BEQ $03
-JMP print
+BNE print
+RTS
+
+; Loads "HELLO" to the memory address 0xFO.
+load_hello:
+LDA #$48
+STA *$F0
+LDA #$45
+STA *$F1
+LDA #$4C
+STA *$F2
+LDA #$4C
+STA *$F3
+LDA #$4F
+STA *$F4
+RTS
+
+; Loads "HALLO" to the memory address 0xF0.
+load_hallo:
+LDA #$48
+STA *$F0
+LDA #$41
+STA *$F1
+LDA #$4C
+STA *$F2
+LDA #$4C
+STA *$F3
+LDA #$4F
+STA *$F4
 RTS

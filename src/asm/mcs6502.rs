@@ -8,17 +8,19 @@ use inst::mcs6502;
 use util;
 
 pub struct Assembler6502 {
-    data:   Vec<u8>,
-    labels: HashMap<String, u16>,
-    jumps:  HashMap<u16, String>
+    data:      Vec<u8>,
+    labels:    HashMap<String, u16>,
+    jumps:     HashMap<u16, String>,
+    branches:  HashMap<u16, String>
 }
 
 impl Assembler6502 {
     pub fn new() -> Assembler6502 {
         Assembler6502 {
-            data:   Vec::new(),
-            labels: HashMap::new(),
-            jumps:  HashMap::new()
+            data:     Vec::new(),
+            labels:   HashMap::new(),
+            jumps:    HashMap::new(),
+            branches: HashMap::new()
         }
     }
 }
@@ -29,8 +31,8 @@ impl Assembler for Assembler6502 {
         self.labels.clear();
         self.jumps.clear();
 
-        mcs6502::translate("JMP START", &mut self.data,
-                           &mut self.labels, &mut self.jumps);
+        mcs6502::translate("JMP START", &mut self.data, &mut self.labels,
+                           &mut self.jumps, &mut self.branches);
 
         self.assemble_file(input);
     }
@@ -48,7 +50,24 @@ impl Assembler for Assembler6502 {
                     self.data[(addr + 1) as usize] = lo;
                     self.data[(addr + 2) as usize] = hi;
                 }
-                None => panic!("Label not defined: {}.", label)
+                None => panic!("Label not defined: {}", label)
+            }
+        }
+
+        for (&addr, label) in self.branches.iter() {
+            match self.labels.get(label) {
+                Some(&target) => {
+                    let target = target as i16;
+                    let addr = addr as i16;
+                    let off = target - addr;
+
+                    if off > 127i16 {
+                        panic!("Branch label at 0x{:X} too far: {}", addr, label);
+                    } else {
+                        self.data[(addr + 1) as usize] = util::lower(off as u16);
+                    }
+                }
+                None => panic!("Label not defined: {}", label)
             }
         }
     }
@@ -76,8 +95,8 @@ impl Assembler6502 {
                 let file = self.get_include_file(&line, input);
                 self.assemble_file(file.to_str().unwrap());
             } else if !line.is_empty() && !line.starts_with(";") {
-                mcs6502::translate(&upper_line, &mut self.data,
-                                   &mut self.labels, &mut self.jumps);
+                mcs6502::translate(&upper_line, &mut self.data, &mut self.labels,
+                                   &mut self.jumps, &mut self.branches);
             }
         }
     }

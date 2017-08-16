@@ -18,6 +18,7 @@ pub enum AddressMode {
     IndirectY,
     Relative,
     Accumulator,
+    Label,
     None
 }
 
@@ -554,6 +555,8 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
         addr_mode = AddressMode::Implied;
     } else if chars[0] == 'A' {
         addr_mode = AddressMode::Accumulator;
+    } else if is_valid_label(arguments, false) {
+        addr_mode = AddressMode::Label;
     } else if chars[0] == '#' {
         // Implied
         let res = extract_operand_u8(&chars, 1);
@@ -687,6 +690,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
         }
         "BCC" => {
             match *mode {
+                AddressMode::Label    |
                 AddressMode::Relative => {
                     ops::BCC_RELATIVE
                 }
@@ -695,6 +699,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
         }
         "BCS" => {
             match *mode {
+                AddressMode::Label    |
                 AddressMode::Relative => {
                     ops::BCS_RELATIVE
                 }
@@ -703,6 +708,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
         }
         "BEQ" => {
             match *mode {
+                AddressMode::Label    |
                 AddressMode::Relative => {
                     ops::BEQ_RELATIVE
                 }
@@ -722,6 +728,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
         }
         "BMI" => {
             match *mode {
+                AddressMode::Label    |
                 AddressMode::Relative => {
                     ops::BMI_RELATIVE
                 }
@@ -730,6 +737,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
         }
         "BNE" => {
             match *mode {
+                AddressMode::Label    |
                 AddressMode::Relative => {
                     ops::BNE_RELATIVE
                 }
@@ -738,6 +746,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
         }
         "BPL" => {
             match *mode {
+                AddressMode::Label    |
                 AddressMode::Relative => {
                     ops::BPL_RELATIVE
                 }
@@ -754,6 +763,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
         }
         "BVC" => {
             match *mode {
+                AddressMode::Label    |
                 AddressMode::Relative => {
                     ops::BVC_RELATIVE
                 }
@@ -762,6 +772,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
         }
         "BVS" => {
             match *mode {
+                AddressMode::Label    |
                 AddressMode::Relative => {
                     ops::BVS_RELATIVE
                 }
@@ -954,26 +965,20 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
         }
         "JMP" => {
             match *mode {
+                AddressMode::Label    |
                 AddressMode::Absolute => {
                     ops::JMP_ABSOLUTE
                 }
                 AddressMode::Indirect => {
                     ops::JMP_INDIRECT
                 }
-                AddressMode::None     => {
-                    // Label jump.
-                    ops::JMP_ABSOLUTE
-                }
                 _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
             }
         }
         "JSR" => {
             match *mode {
+                AddressMode::Label    |
                 AddressMode::Absolute => {
-                    ops::JSR_ABSOLUTE
-                }
-                AddressMode::None     => {
-                    // Label jump.
                     ops::JSR_ABSOLUTE
                 }
                 _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
@@ -1386,9 +1391,24 @@ fn can_jump_to_label(op: u8) -> bool {
     op == ops::JMP_ABSOLUTE || op == ops::JSR_ABSOLUTE
 }
 
+fn can_branch_to_label(op: u8) -> bool {
+    match op {
+        ops::BCC_RELATIVE |
+        ops::BCS_RELATIVE |
+        ops::BEQ_RELATIVE |
+        ops::BMI_RELATIVE |
+        ops::BNE_RELATIVE |
+        ops::BPL_RELATIVE |
+        ops::BVC_RELATIVE |
+        ops::BVS_RELATIVE => true,
+        _                 => false
+    }
+}
+
 pub fn translate(command: &str, mut out: &mut Vec<u8>,
                  labels: &mut HashMap<String, u16>,
-                 jumps: &mut HashMap<u16, String>) {
+                 jumps: &mut HashMap<u16, String>,
+                 branches: &mut HashMap<u16, String>) {
     if is_valid_label(command, true) {
         let mut label = String::from(command);
         if !label.ends_with(":") {
@@ -1491,13 +1511,20 @@ pub fn translate(command: &str, mut out: &mut Vec<u8>,
             push_three_byte(op, operand, &mut out);
         }
 
-        AddressMode::None        => {
-            if is_valid_label(&arg, false) && can_jump_to_label(op) {
-                jumps.insert(out.len() as u16, String::from(arg).to_uppercase() + &":");
-                push_three_byte(op, 0x00u16, &mut out);
-            } else {
-                panic!("AddressingMode::None as a result of {} translation.", command);
+        AddressMode::Label       => {
+            if is_valid_label(&arg, false) {
+                if can_jump_to_label(op) {
+                    jumps.insert(out.len() as u16, String::from(arg).to_uppercase() + &":");
+                    push_three_byte(op, 0x00u16, &mut out);
+                } else if can_branch_to_label(op) {
+                    branches.insert(out.len() as u16, String::from(arg).to_uppercase() + &":");
+                    push_two_byte(op, 0x00u8, &mut out);
+                }
             }
+        }
+
+        AddressMode::None     => {
+            panic!("AddressingMode::None as a result of {} translation.", command);
         }
     }
 }
@@ -1733,8 +1760,7 @@ pub fn addr_mode_to_operand(mode: &AddressMode, op8: u8, op16: u16) -> String {
         AddressMode::IndirectY   => format!("(${:02X}), Y", op8),
         AddressMode::Relative    => format!("${:02X}", op8),
         AddressMode::Accumulator => String::from("A"),
-        AddressMode::Implied     |
-        AddressMode::None        => String::from("")
+        _                        => String::from("")
     }
 }
 

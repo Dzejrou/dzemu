@@ -1,39 +1,14 @@
-; TODO: Add relative includes!
 .include "print.a65"
 
-; Loads "HELLO" to the memory address 0xFO.
 start:
-LDA #$48
-STA *$F0
-LDA #$45
-STA *$F1
-LDA #$4C
-STA *$F2
-LDA #$4C
-STA *$F3
-LDA #$4F
-STA *$F4
-
-; Setups index X for the loop.
+JSR load_hello
 LDX #$05
-
-; Prints the string to stdout.
 JSR print
 
-; Loads "HALLO" to the memory address 0xF0.
-LDA #$48
-STA *$F0
-LDA #$41
-STA *$F1
-LDA #$4C
-STA *$F2
-LDA #$4C
-STA *$F3
-LDA #$4F
-STA *$F4
-
-; Setups index X for the loop.
+JSR load_hallo
 LDX #$05
+JSR print
 
-; Prints the string to stdout.
+JSR load_hello
+LDX #$05
 JSR print

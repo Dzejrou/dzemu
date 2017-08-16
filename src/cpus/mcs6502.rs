@@ -495,9 +495,7 @@ impl<M: Memory> Mcs6502<M> {
 
             AddressMode::Accumulator => self.accu,
 
-            AddressMode::Indirect    |
-            AddressMode::Implied     |
-            AddressMode::None        => 0
+            _                        => 0
         }
     }
 
@@ -579,7 +577,15 @@ impl<M: Memory> Mcs6502<M> {
 
     fn branch(&mut self, cond: bool, offset: u8) {
         if cond {
-            self.pc = self.pc.wrapping_add(offset as usize);
+            let soff = offset as i8;
+            if soff < 0 {
+                let offset = soff.abs() as usize;
+                self.pc = self.pc.wrapping_sub(offset);
+            } else {
+                self.pc = self.pc.wrapping_add(offset as usize);
+            }
+
+            self.pc = self.pc.wrapping_sub(addr::pc_offset(&self.addr_mode));
         }
     }
 
