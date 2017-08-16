@@ -36,16 +36,17 @@ impl Assembler for Assembler6502 {
         self.labels.clear();
         self.jumps.clear();
 
-        mcs6502::translate(
-            "JMP START", &mut self.data, &mut self.labels,
-            &mut self.jumps, &mut self.branches,
-            &mut self.var_uses
-        );
+        self.translate("JMP START");
 
         self.assemble_file(input);
     }
 
     fn link(&mut self) {
+        // TODO: Implement shifting? Shift all bytes from
+        //       address X and increment all labels by
+        //       the shifted amount if they are after X?
+        //       This would allow inserting code after
+        //       assembling but before linking.
         if !self.labels.contains_key("START:") {
             panic!("Start label not defined.");
         }
@@ -85,7 +86,10 @@ impl Assembler for Assembler6502 {
                     self.data[(addr + 1) as usize] = util::lower(target);
                     self.data[(addr + 2) as usize] = util::upper(target);
                 }
-                None => panic!("Variable not defined: {}", var)
+                None => {
+                    println!("{:?}", self.vars);
+                    panic!("Variable not defined: {}", var);
+                }
             }
         }
     }
@@ -99,6 +103,91 @@ impl Assembler for Assembler6502 {
 }
 
 impl Assembler6502 {
+    pub fn translate(&mut self, command: &str) {
+        let data_end = self.data.len() as u16;
+
+        if mcs6502::is_valid_label(command, true) {
+            let mut label = String::from(command);
+            if !label.ends_with(":") {
+                label.push_str(":");
+            }
+
+            match self.labels.insert(label, data_end as u16) {
+                Some(_) => panic!("Redefinition of label in {}", command),
+                None    => ()
+            }
+            return;
+        }
+
+        let cmd_tmp;
+        match command.find(";") {
+            Some(num) => {
+                let (cmd, _) = command.split_at(num);
+                cmd_tmp = String::from(cmd);
+            }
+            None => {
+                cmd_tmp = String::from(command);
+            }
+        }
+
+        let command = cmd_tmp.trim();
+        let mut space_idx;
+
+        let op;
+        let arg;
+
+        if command.len() > 3 {
+            match command.find(" ") {
+                Some(num) => space_idx = num,
+                None => panic!("Malformed command: {}", command)
+            }
+
+            if space_idx != 3 {
+                let (label, rest) = command.split_at(space_idx);
+                let rest = rest.trim();
+
+                let mut label = String::from(label).to_lowercase();
+                assert!(mcs6502::is_valid_label(&label, true), "Invalid label: {}.", label);
+                if !label.ends_with(":") {
+                    label.push_str(":");
+                }
+                match self.labels.insert(label, data_end) {
+                    Some(_) => panic!("Redefinition of label in {}", command),
+                    None    => ()
+                }
+
+                match rest.find(" ") {
+                    Some(num) => space_idx = num,
+                    None => panic!("Malformed command: {}", command)
+                }
+
+                let (op_, arg_) = rest.split_at(space_idx);
+                op = op_;
+                arg = arg_;
+            } else {
+                let (op_, arg_) = command.split_at(space_idx);
+                op = op_;
+                arg = arg_;
+            }
+        } else {
+            op = command;
+            arg = "";
+        }
+
+        let op = op.trim();
+        let arg = arg.trim();
+        let (addr_mode, operand) = mcs6502::parse_arguments(&arg);
+        let mut addr_mode = addr_mode;
+
+        if op.starts_with("B") && addr_mode == AddressMode::Absolute {
+            // Relative and 2 digit absolute don't differ in assembly :/
+            addr_mode = AddressMode::Relative;
+        }
+
+        let op = mcs6502::name_mode_to_opcode(op, &addr_mode);
+        self.push_instruction(op, operand, addr_mode, &arg);
+    }
+
     fn assemble_file(&mut self, input: &str) {
         let file = File::open(input).
             expect(&format!("Unable to open input file: {}", input));
@@ -107,19 +196,30 @@ impl Assembler6502 {
         for line in reader.lines() {
             let line = line.unwrap();
             let line = line.trim();
-
             let upper_line = line.to_uppercase();
+
             if upper_line.starts_with(".INCLUDE ") {
                 let file = self.get_include_file(&line, input);
                 self.assemble_file(file.to_str().unwrap());
             } else if upper_line.starts_with(".BYTE ") {
+                // TODO: Special instruction + length before variable
+                //       so that disassembler knows to skip it, maybe only
+                //       in debug mode? Even with a name of the variable?
+                // TODO: Allow arrays?
                 self.declare_variable(&upper_line);
+            } else if upper_line.starts_with(".WORD ") {
+                // TODO: 16 bit variables, also add 16 bit
+                //       custom instructions!
+            } else if upper_line.starts_with(".MACRO ") {
+                // TODO: Macros, probably add .ENDMACRO and change state,
+                //       while in macro state, instead of translate below
+                //       you define the macro until .ENDMACRO is found?
+                // TODO: Do it before compilation like C does?
+            } else if upper_line.starts_with(".STRING ") {
+                // TODO: Add strings? Basically same as .BYTE array, but
+                //       translates chars to bytes.
             } else if !line.is_empty() && !line.starts_with(";") {
-                mcs6502::translate(
-                    &upper_line, &mut self.data, &mut self.labels,
-                    &mut self.jumps, &mut self.branches,
-                    &mut self.var_uses
-                );
+                self.translate(&upper_line);
             }
         }
     }
@@ -168,7 +268,72 @@ impl Assembler6502 {
             panic!("Invalid variable name: '{}'", variable);
         }
 
-        self.vars.insert(String::from(variable), self.data.len() as u16);
+        let mut variable = String::from(variable);
+        variable.push_str(":");
+        self.vars.insert(variable, self.data.len() as u16);
         self.data.push(value);
+    }
+
+    fn push_instruction(&mut self, op: u8, operand: u16, mode: AddressMode, arg: &str) {
+        let data_end = self.data.len() as u16;
+
+        match mode {
+            AddressMode::Implied     => {
+                self.push_one_byte(op);
+            }
+
+            AddressMode::Accumulator |
+            AddressMode::Relative    |
+            AddressMode::Immediate   |
+            AddressMode::IndirectX   |
+            AddressMode::IndirectY   |
+            AddressMode::ZeroPageX   |
+            AddressMode::ZeroPageY   |
+            AddressMode::ZeroPage    => {
+                self.push_two_byte(op, util::lower(operand));
+            }
+
+            AddressMode::Absolute    |
+            AddressMode::AbsoluteX   |
+            AddressMode::AbsoluteY   |
+            AddressMode::Indirect    => {
+                self.push_three_byte(op, operand);
+            }
+
+            AddressMode::Label       => {
+                let mut label = String::from(arg).to_uppercase();
+                label.push_str(":");
+
+                if mcs6502::can_jump_to_label(op) {
+                    self.jumps.insert(data_end , label);
+                    self.push_three_byte(op, 0x00u16);
+                } else if mcs6502::can_branch_to_label(op) {
+                    self.branches.insert(data_end, label);
+                    self.push_two_byte(op, 0x00u8);
+                } else if mcs6502::can_use_variables(op) {
+                    self.var_uses.insert(data_end, label);
+                    self.push_three_byte(op, 0x0000u16);
+                }
+            }
+
+            AddressMode::None     => {
+                panic!("AddressingMode::None for opcode: {}", op);
+            }
+        }
+    }
+
+    fn push_one_byte(&mut self, op: u8) {
+        self.data.push(op);
+    }
+
+    fn push_two_byte(&mut self, op: u8, operand: u8) {
+        self.data.push(op);
+        self.data.push(operand);
+    }
+
+    fn push_three_byte(&mut self, op: u8, operand: u16) {
+        self.data.push(op);
+        self.data.push(util::lower(operand));
+        self.data.push(util::upper(operand));
     }
 }

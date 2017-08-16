@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use mems::Memory;
 use util;
 
@@ -1419,11 +1418,11 @@ pub fn is_valid_label(label: &str, decl: bool) -> bool {
     !is_valid_instruction(label) && util::is_valid_label(label, decl)
 }
 
-fn can_jump_to_label(op: u8) -> bool {
+pub fn can_jump_to_label(op: u8) -> bool {
     op == ops::JMP_ABSOLUTE || op == ops::JSR_ABSOLUTE
 }
 
-fn can_branch_to_label(op: u8) -> bool {
+pub fn can_branch_to_label(op: u8) -> bool {
     match op {
         ops::BCC_RELATIVE |
         ops::BCS_RELATIVE |
@@ -1437,7 +1436,7 @@ fn can_branch_to_label(op: u8) -> bool {
     }
 }
 
-fn can_use_variables(op: u8) -> bool {
+pub fn can_use_variables(op: u8) -> bool {
     match op {
         ops::ADC_ABSOLUTE |
         ops::AND_ABSOLUTE |
@@ -1466,135 +1465,6 @@ fn can_use_variables(op: u8) -> bool {
         _                 => false
     }
 
-}
-
-pub fn translate(command: &str, mut out: &mut Vec<u8>,
-                 labels: &mut HashMap<String, u16>,
-                 jumps: &mut HashMap<u16, String>,
-                 branches: &mut HashMap<u16, String>,
-                 var_uses: &mut HashMap<u16, String>) {
-    if is_valid_label(command, true) {
-        let mut label = String::from(command);
-        if !label.ends_with(":") {
-            label.push_str(":");
-        }
-
-        match labels.insert(label, out.len() as u16) {
-            Some(_) => panic!("Redefinition of label in {}", command),
-            None    => ()
-        }
-        return;
-    }
-
-    let cmd_tmp;
-    match command.find(";") {
-        Some(num) => {
-            let (cmd, _) = command.split_at(num);
-            cmd_tmp = String::from(cmd);
-        }
-        None => {
-            cmd_tmp = String::from(command);
-        }
-    }
-
-    let command = cmd_tmp.trim();
-    let mut space_idx;
-
-    let op;
-    let arg;
-
-    if command.len() > 3 {
-        match command.find(" ") {
-            Some(num) => space_idx = num,
-            None => panic!("Malformed command: {}", command)
-        }
-
-        if space_idx != 3 {
-            let (label, rest) = command.split_at(space_idx);
-            let rest = rest.trim();
-
-            let mut label = String::from(label).to_lowercase();
-            assert!(is_valid_label(&label, true), "Invalid label: {}.", label);
-            if !label.ends_with(":") {
-                label.push_str(":");
-            }
-            match labels.insert(label, out.len() as u16) {
-                Some(_) => panic!("Redefinition of label in {}", command),
-                None    => ()
-            }
-
-            match rest.find(" ") {
-                Some(num) => space_idx = num,
-                None => panic!("Malformed command: {}", command)
-            }
-
-            let (op_, arg_) = rest.split_at(space_idx);
-            op = op_;
-            arg = arg_;
-        } else {
-            let (op_, arg_) = command.split_at(space_idx);
-            op = op_;
-            arg = arg_;
-        }
-    } else {
-        op = command;
-        arg = "";
-    }
-
-    let op = op.trim();
-    let arg = arg.trim();
-    let (addr_mode, operand) = parse_arguments(&arg);
-    let mut addr_mode = addr_mode;
-
-    if op.starts_with("B") && addr_mode == AddressMode::Absolute {
-        // Relative and 2 digit absolute don't differ in assembly :/
-        addr_mode = AddressMode::Relative;
-    }
-
-    let op = name_mode_to_opcode(op, &addr_mode);
-    match addr_mode {
-        AddressMode::Implied     => {
-            push_one_byte(op, &mut out);
-        }
-
-        AddressMode::Accumulator |
-        AddressMode::Relative    |
-        AddressMode::Immediate   |
-        AddressMode::IndirectX   |
-        AddressMode::IndirectY   |
-        AddressMode::ZeroPageX   |
-        AddressMode::ZeroPageY   |
-        AddressMode::ZeroPage    => {
-            push_two_byte(op, util::lower(operand), &mut out);
-        }
-
-        AddressMode::Absolute    |
-        AddressMode::AbsoluteX   |
-        AddressMode::AbsoluteY   |
-        AddressMode::Indirect    => {
-            push_three_byte(op, operand, &mut out);
-        }
-
-        AddressMode::Label       => {
-            if is_valid_label(&arg, false) {
-                let label = String::from(arg).to_uppercase();
-                if can_jump_to_label(op) {
-                    jumps.insert(out.len() as u16, label.clone() + &":");
-                    push_three_byte(op, 0x00u16, &mut out);
-                } else if can_branch_to_label(op) {
-                    branches.insert(out.len() as u16, label.clone() + &":");
-                    push_two_byte(op, 0x00u8, &mut out);
-                } else if can_use_variables(op) {
-                    var_uses.insert(out.len() as u16, label.clone());
-                    push_three_byte(op, 0x0000u16, &mut out);
-                }
-            }
-        }
-
-        AddressMode::None     => {
-            panic!("AddressingMode::None as a result of {} translation.", command);
-        }
-    }
 }
 
 pub fn op_name(opcode: u8) -> String {
@@ -1868,24 +1738,6 @@ pub fn op_to_str(cart: &Memory, idx: &mut usize) -> String {
     }
 }
 
-#[inline]
-pub fn push_one_byte(op: u8, buf: &mut Vec<u8>) {
-    buf.push(op);
-}
-
-#[inline]
-pub fn push_two_byte(op: u8, operand: u8, buf: &mut Vec<u8>) {
-    buf.push(op);
-    buf.push(operand);
-}
-
-#[inline]
-pub fn push_three_byte(op: u8, operand: u16, buf: &mut Vec<u8>) {
-    buf.push(op);
-    buf.push(util::lower(operand));
-    buf.push(util::upper(operand));
-}
-
 #[cfg(test)]
 pub mod tests {
     use inst::mcs6502::*;
@@ -1978,14 +1830,5 @@ pub mod tests {
         let (addr_mode, operand) = parse_arguments(&args_y);
         assert_eq!(addr_mode, AddressMode::AbsoluteY);
         assert_eq!(operand, 1017);
-    }
-
-    #[test]
-    fn translate_commands() {
-        let mut output: Vec<u8> = Vec::new();
-        let mut labels: HashMap<String, u16> = HashMap::new();
-        let mut jumps: HashMap<u16, String> = HashMap::new();
-        translate(String::from("AND *$FF, X"), &mut output, &mut labels, &mut jumps);
-        assert_eq!(output, vec! [ops::AND_ZERO_PAGE_X, 0xFF]);
     }
 }
