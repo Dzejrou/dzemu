@@ -1458,7 +1458,7 @@ pub fn translate(command: &str, mut out: &mut Vec<u8>,
                  labels: &mut HashMap<String, u16>,
                  jumps: &mut HashMap<u16, String>,
                  branches: &mut HashMap<u16, String>,
-                 vars: &mut HashMap<String, u16>) {
+                 var_uses: &mut HashMap<u16, String>) {
     if is_valid_label(command, true) {
         let mut label = String::from(command);
         if !label.ends_with(":") {
@@ -1571,10 +1571,8 @@ pub fn translate(command: &str, mut out: &mut Vec<u8>,
                     branches.insert(out.len() as u16, label.clone() + &":");
                     push_two_byte(op, 0x00u8, &mut out);
                 } else if can_use_variables(op) {
-                    match vars.get(&label) {
-                        Some(&var_addr) => push_three_byte(op, var_addr, &mut out),
-                        None => panic!("Undefined variable: {}", arg)
-                    }
+                    var_uses.insert(out.len() as u16, label.clone());
+                    push_three_byte(op, 0x0000u16, &mut out);
                 }
             }
         }

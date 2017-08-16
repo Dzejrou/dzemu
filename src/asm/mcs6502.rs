@@ -13,7 +13,8 @@ pub struct Assembler6502 {
     labels:    HashMap<String, u16>,
     jumps:     HashMap<u16, String>,
     branches:  HashMap<u16, String>,
-    vars:      HashMap<String, u16>
+    vars:      HashMap<String, u16>,
+    var_uses:  HashMap<u16, String>
 }
 
 impl Assembler6502 {
@@ -23,7 +24,8 @@ impl Assembler6502 {
             labels:   HashMap::new(),
             jumps:    HashMap::new(),
             branches: HashMap::new(),
-            vars:     HashMap::new()
+            vars:     HashMap::new(),
+            var_uses: HashMap::new()
         }
     }
 }
@@ -34,8 +36,11 @@ impl Assembler for Assembler6502 {
         self.labels.clear();
         self.jumps.clear();
 
-        mcs6502::translate("JMP START", &mut self.data, &mut self.labels,
-                           &mut self.jumps, &mut self.branches, &mut self.vars);
+        mcs6502::translate(
+            "JMP START", &mut self.data, &mut self.labels,
+            &mut self.jumps, &mut self.branches,
+            &mut self.var_uses
+        );
 
         self.assemble_file(input);
     }
@@ -73,6 +78,16 @@ impl Assembler for Assembler6502 {
                 None => panic!("Label not defined: {}", label)
             }
         }
+
+        for (&addr, var) in self.var_uses.iter() {
+            match self.vars.get(var) {
+                Some(&target) => {
+                    self.data[(addr + 1) as usize] = util::lower(target);
+                    self.data[(addr + 2) as usize] = util::upper(target);
+                }
+                None => panic!("Variable not defined: {}", var)
+            }
+        }
     }
 
     fn output(&mut self, output: &str) {
@@ -100,9 +115,11 @@ impl Assembler6502 {
             } else if upper_line.starts_with(".BYTE ") {
                 self.declare_variable(&upper_line);
             } else if !line.is_empty() && !line.starts_with(";") {
-                mcs6502::translate(&upper_line, &mut self.data, &mut self.labels,
-                                   &mut self.jumps, &mut self.branches,
-                                   &mut self.vars);
+                mcs6502::translate(
+                    &upper_line, &mut self.data, &mut self.labels,
+                    &mut self.jumps, &mut self.branches,
+                    &mut self.var_uses
+                );
             }
         }
     }

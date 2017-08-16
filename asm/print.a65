@@ -1,8 +1,10 @@
 ; Prints the string to stdout.
 print:
+LDX loop_count
+print_loop:
 PRT $F0
 DEX
-BNE print
+BNE print_loop
 RTS
 
 ; Loads "HELLO" to the memory address 0xFO.
@@ -31,4 +33,7 @@ LDA #$4C
 STA *$F3
 LDA #$4F
 STA *$F4
+; Change the loop count.
+LDA #$02
+STA loop_count ; Variables work across files!
 RTS
