@@ -1,7 +1,9 @@
 .include "print.a65"
+.include "math.a65"
 
 .byte loop_count $05
-.byte _my_var1 $FF
+.byte _my_var1 $10
+.byte _my_var2 $0A
 
 start:
 JSR load_hello
@@ -12,3 +14,13 @@ JSR print
 
 JSR load_hello
 JSR print
+
+; Calculate _my_var1 * _my_var2.
+LDA _my_var1
+STA __mul1
+LDA _my_var2
+STA __mul2
+
+JSR math_mul
+TOS $20
+PRT $20

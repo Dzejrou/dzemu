@@ -289,6 +289,8 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
 
             ops::TXS_IMPLIED     => self.op_txs(),
 
+            ops::custom::TOS_ABSOLUTE => self.op_tos(),
+
             ops::custom::PRT_ABSOLUTE => self.op_prt(),
 
             op => panic!("Unknown opcode: {}", op)
@@ -1023,6 +1025,19 @@ impl<M: Memory> Mcs6502<M> {
 
         let str = String::from_utf8_lossy(&buf);
         println!("{}", str);
+    }
+
+    fn op_tos(&mut self) {
+        let res = self.accu.to_string();
+        let buf: Vec<u8> = res.bytes().collect();
+
+        let pc = self.pc;
+        let addr = self.ram.read_u16(pc + 1) as usize;
+
+        for i in 0..buf.len() {
+            self.ram.write_u8(addr + i, buf[i]);
+        }
+        self.ram.write_u8(addr + buf.len(), 0x00);
     }
 }
 

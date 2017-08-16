@@ -1,0 +1,22 @@
+; Multiplies __mul1 and __mul2 and stores
+; the product in the accumulator.
+.byte __mul1 $00
+.byte __mul2 $00
+
+math_mul:
+LDA #$00
+BEQ __mul_start
+
+__mul_add:
+CLC
+ADC __mul1
+
+__mul_loop:
+ASL __mul1
+
+__mul_start:
+LSR __mul2
+BCS __mul_add
+BNE __mul_loop
+
+RTS
