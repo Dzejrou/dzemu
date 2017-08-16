@@ -621,6 +621,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::ADC_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::ADC_ABSOLUTE
                 }
@@ -650,6 +651,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::AND_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::AND_ABSOLUTE
                 }
@@ -679,6 +681,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX   => {
                     ops::ASL_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute    => {
                     ops::ASL_ABSOLUTE
                 }
@@ -720,6 +723,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPage => {
                     ops::BIT_ZERO_PAGE
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute => {
                     ops::BIT_ABSOLUTE
                 }
@@ -822,6 +826,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::CMP_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::CMP_ABSOLUTE
                 }
@@ -848,6 +853,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPage  => {
                     ops::CPX_ZERO_PAGE
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::CPX_ABSOLUTE
                 }
@@ -862,6 +868,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPage  => {
                     ops::CPY_ZERO_PAGE
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::CPY_ABSOLUTE
                 }
@@ -876,6 +883,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::DEC_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::DEC_ABSOLUTE
                 }
@@ -912,6 +920,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::EOR_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::EOR_ABSOLUTE
                 }
@@ -938,6 +947,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::INC_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::INC_ABSOLUTE
                 }
@@ -995,6 +1005,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::LDA_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::LDA_ABSOLUTE
                 }
@@ -1024,6 +1035,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageY => {
                     ops::LDX_ZERO_PAGE_Y
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::LDX_ABSOLUTE
                 }
@@ -1044,6 +1056,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::LDY_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::LDY_ABSOLUTE
                 }
@@ -1064,6 +1077,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX   => {
                     ops::LSR_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute    => {
                     ops::LSR_ABSOLUTE
                 }
@@ -1092,6 +1106,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::ORA_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::ORA_ABSOLUTE
                 }
@@ -1153,6 +1168,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX   => {
                     ops::ROL_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute    => {
                     ops::ROL_ABSOLUTE
                 }
@@ -1173,6 +1189,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX   => {
                     ops::ROR_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute    => {
                     ops::ROR_ABSOLUTE
                 }
@@ -1209,6 +1226,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::SBC_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::SBC_ABSOLUTE
                 }
@@ -1259,6 +1277,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::STA_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::STA_ABSOLUTE
                 }
@@ -1285,6 +1304,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageY => {
                     ops::STX_ZERO_PAGE_Y
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::STX_ABSOLUTE
                 }
@@ -1299,6 +1319,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX => {
                     ops::STY_ZERO_PAGE_X
                 }
+                AddressMode::Label     |
                 AddressMode::Absolute  => {
                     ops::STY_ABSOLUTE
                 }
@@ -1383,7 +1404,7 @@ pub fn is_valid_instruction(op: &str) -> bool {
     }
 }
 
-fn is_valid_label(label: &str, decl: bool) -> bool {
+pub fn is_valid_label(label: &str, decl: bool) -> bool {
     !is_valid_instruction(label) && util::is_valid_label(label, decl)
 }
 
@@ -1405,10 +1426,39 @@ fn can_branch_to_label(op: u8) -> bool {
     }
 }
 
+fn can_use_variables(op: u8) -> bool {
+    match op {
+        ops::ADC_ABSOLUTE |
+        ops::AND_ABSOLUTE |
+        ops::ASL_ABSOLUTE |
+        ops::BIT_ABSOLUTE |
+        ops::CMP_ABSOLUTE |
+        ops::CPX_ABSOLUTE |
+        ops::CPY_ABSOLUTE |
+        ops::DEC_ABSOLUTE |
+        ops::EOR_ABSOLUTE |
+        ops::INC_ABSOLUTE |
+        ops::LDA_ABSOLUTE |
+        ops::LDX_ABSOLUTE |
+        ops::LDY_ABSOLUTE |
+        ops::LSR_ABSOLUTE |
+        ops::ORA_ABSOLUTE |
+        ops::ROL_ABSOLUTE |
+        ops::ROR_ABSOLUTE |
+        ops::SBC_ABSOLUTE |
+        ops::STA_ABSOLUTE |
+        ops::STX_ABSOLUTE |
+        ops::STY_ABSOLUTE => true,
+        _                 => false
+    }
+
+}
+
 pub fn translate(command: &str, mut out: &mut Vec<u8>,
                  labels: &mut HashMap<String, u16>,
                  jumps: &mut HashMap<u16, String>,
-                 branches: &mut HashMap<u16, String>) {
+                 branches: &mut HashMap<u16, String>,
+                 vars: &mut HashMap<String, u16>) {
     if is_valid_label(command, true) {
         let mut label = String::from(command);
         if !label.ends_with(":") {
@@ -1513,12 +1563,18 @@ pub fn translate(command: &str, mut out: &mut Vec<u8>,
 
         AddressMode::Label       => {
             if is_valid_label(&arg, false) {
+                let label = String::from(arg).to_uppercase();
                 if can_jump_to_label(op) {
-                    jumps.insert(out.len() as u16, String::from(arg).to_uppercase() + &":");
+                    jumps.insert(out.len() as u16, label.clone() + &":");
                     push_three_byte(op, 0x00u16, &mut out);
                 } else if can_branch_to_label(op) {
-                    branches.insert(out.len() as u16, String::from(arg).to_uppercase() + &":");
+                    branches.insert(out.len() as u16, label.clone() + &":");
                     push_two_byte(op, 0x00u8, &mut out);
+                } else if can_use_variables(op) {
+                    match vars.get(&label) {
+                        Some(&var_addr) => push_three_byte(op, var_addr, &mut out),
+                        None => panic!("Undefined variable: {}", arg)
+                    }
                 }
             }
         }
@@ -1782,12 +1838,20 @@ pub fn op_to_str(cart: &Memory, idx: &mut usize) -> String {
     }
     let addr_mode = addr::get_addr_mode(opcode);
 
-    *idx = idx.wrapping_add(addr::pc_offset(&addr_mode));
+    let mut off = addr::pc_offset(&addr_mode);
+    if off == 0 {
+        off = 1;
+    }
+    *idx = idx.wrapping_add(off);
 
     let arg = addr_mode_to_operand(&addr_mode, operand_u8, operand_u16);
     let name = op_name(opcode);
 
-    format!("{} {}", name, arg)
+    if arg.is_empty() {
+        format!("{}", name)
+    } else {
+        format!("{} {}", name, arg)
+    }
 }
 
 #[inline]

@@ -5,13 +5,15 @@ use std::path::{Path, PathBuf};
 
 use asm::Assembler;
 use inst::mcs6502;
+use inst::mcs6502::AddressMode;
 use util;
 
 pub struct Assembler6502 {
     data:      Vec<u8>,
     labels:    HashMap<String, u16>,
     jumps:     HashMap<u16, String>,
-    branches:  HashMap<u16, String>
+    branches:  HashMap<u16, String>,
+    vars:      HashMap<String, u16>
 }
 
 impl Assembler6502 {
@@ -20,7 +22,8 @@ impl Assembler6502 {
             data:     Vec::new(),
             labels:   HashMap::new(),
             jumps:    HashMap::new(),
-            branches: HashMap::new()
+            branches: HashMap::new(),
+            vars:     HashMap::new()
         }
     }
 }
@@ -32,7 +35,7 @@ impl Assembler for Assembler6502 {
         self.jumps.clear();
 
         mcs6502::translate("JMP START", &mut self.data, &mut self.labels,
-                           &mut self.jumps, &mut self.branches);
+                           &mut self.jumps, &mut self.branches, &mut self.vars);
 
         self.assemble_file(input);
     }
@@ -94,9 +97,12 @@ impl Assembler6502 {
             if upper_line.starts_with(".INCLUDE ") {
                 let file = self.get_include_file(&line, input);
                 self.assemble_file(file.to_str().unwrap());
+            } else if upper_line.starts_with(".BYTE ") {
+                self.declare_variable(&upper_line);
             } else if !line.is_empty() && !line.starts_with(";") {
                 mcs6502::translate(&upper_line, &mut self.data, &mut self.labels,
-                                   &mut self.jumps, &mut self.branches);
+                                   &mut self.jumps, &mut self.branches,
+                                   &mut self.vars);
             }
         }
     }
@@ -120,5 +126,32 @@ impl Assembler6502 {
             Some(parent) => parent.join(file),
             None => Path::new(file).to_path_buf()
         }
+    }
+
+    fn declare_variable(&mut self, line: &str) {
+        let (_, var) = line.split_at(5);
+        let var = var.trim();
+        let mut variable = var;
+
+
+        let mut value = 0u8;
+        if let Some(space_idx) = var.find(" ") {
+            let (var, val) = var.split_at(space_idx);
+            let val = val.trim();
+
+            variable = var.trim();
+            let (addr_mode, val) = mcs6502::parse_arguments(val);
+            match addr_mode {
+                AddressMode::Absolute => value = util::lower(val),
+                mode => panic!("Variable is not a byte: {:?}", mode)
+            }
+        }
+
+        if !mcs6502::is_valid_label(variable, false) {
+            panic!("Invalid variable name: {}", var);
+        }
+
+        self.vars.insert(String::from(variable), self.data.len() as u16);
+        self.data.push(value);
     }
 }

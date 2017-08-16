@@ -1,14 +1,16 @@
 .include "print.a65"
 
+.byte my_var $02
+
 start:
 JSR load_hello
 LDX #$05
 JSR print
 
 JSR load_hallo
-LDX #$05
+LDX my_var
 JSR print
 
 JSR load_hello
-LDX #$05
+LDX my_var
 JSR print
