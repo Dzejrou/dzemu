@@ -106,8 +106,13 @@ pub fn u16_to_number(word: u16, base: u8) -> Option<u16> {
 pub fn is_valid_label(label: &str, decl: bool) -> bool {
     let chars: Vec<char> = label.chars().collect();
     let len = chars.len();
-    for i in 0..len - 2 {
-        if !chars[i].is_alphabetic() && chars[i] != '_' {
+
+    if !chars[0].is_alphabetic() && chars[0] != '_' {
+        return false;
+    }
+
+    for i in 1..len - 2 {
+        if !chars[i].is_alphanumeric() && chars[i] != '_' {
             return false;
         }
     }
@@ -116,7 +121,7 @@ pub fn is_valid_label(label: &str, decl: bool) -> bool {
     if decl {
         chars[len - 1] == ':' || chars[len - 1].is_alphabetic()
     } else {
-        chars[len - 1].is_alphabetic()
+        chars[len - 1].is_alphanumeric()
     }
 }
 

@@ -1,6 +1,7 @@
 .include "print.a65"
 
 .byte loop_count $05
+.byte _my_var1 $FF
 
 start:
 JSR load_hello
@@ -10,6 +11,4 @@ JSR load_hallo
 JSR print
 
 JSR load_hello
-LDA #$03
-STA loop_count
 JSR print

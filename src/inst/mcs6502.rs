@@ -553,7 +553,7 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
     // TODO: Indirect addressing modes.
     if chars.len() == 0 {
         addr_mode = AddressMode::Implied;
-    } else if chars[0] == 'A' {
+    } else if chars.len() == 1 && chars[0] == 'A' {
         addr_mode = AddressMode::Accumulator;
     } else if is_valid_label(arguments, false) {
         addr_mode = AddressMode::Label;

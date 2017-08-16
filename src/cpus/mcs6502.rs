@@ -766,7 +766,7 @@ impl<M: Memory> Mcs6502<M> {
     }
 
     fn op_inc(&mut self, mut operand: u8) {
-        operand += 1;
+        operand = operand.wrapping_add(1);
         self.set_operand(operand);
 
         self.set_flag((operand & STS_NEG_MASK) > 0, STS_NEG_MASK);

@@ -165,7 +165,7 @@ impl Assembler6502 {
         }
 
         if !mcs6502::is_valid_label(variable, false) {
-            panic!("Invalid variable name: {}", var);
+            panic!("Invalid variable name: '{}'", variable);
         }
 
         self.vars.insert(String::from(variable), self.data.len() as u16);

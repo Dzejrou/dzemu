@@ -2,12 +2,19 @@
 print:
 LDX loop_count
 print_loop:
-PRT $F0
+; PRT $F0
+; Variable driven development!
+.byte print_instruction $FF
+.byte print_operand_lower $F0
+.byte print_operand_upper $00
+INC print_operand_lower
 DEX
 BNE print_loop
+LDA #$F0
+STA print_operand_lower
 RTS
 
-; Loads "HELLO" to the memory address 0xFO.
+; Loads "HELLO" to the memory address 0xF0.
 load_hello:
 LDA #$48
 STA *$F0
@@ -33,7 +40,4 @@ LDA #$4C
 STA *$F3
 LDA #$4F
 STA *$F4
-; Change the loop count.
-LDA #$02
-STA loop_count ; Variables work across files!
 RTS
