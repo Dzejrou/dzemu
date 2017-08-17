@@ -519,6 +519,9 @@ impl Preprocessor {
                     } else if line.starts_with("$STRING ") {
                         self.macro_string(&line, &mut output);
                         expanded = true;
+                    } else if line.starts_with("$MOV ") {
+                        self.macro_mov(&line, &mut output);
+                        expanded = true;
                     } else if line.starts_with("$") {
                         self.expand_macro(&line, &mut output);
                         expanded = true;
@@ -721,5 +724,21 @@ impl Preprocessor {
         out_string.push_str(" $00");
 
         output.push(out_string);
+    }
+
+    fn macro_mov(&mut self, line: &str, output: &mut Vec<String>) {
+        let mut tokens = line.split_whitespace();
+        tokens.next();
+
+        let arguments: Vec<&str> = tokens.collect();
+
+        if arguments.len() != 2 {
+            panic!("The $mov macro requires two arguments.")
+        }
+
+        output.push(String::from("STA __ACCUMULATOR_BACKUP__"));
+        output.push(format!("LDA {}", arguments[1]));
+        output.push(format!("STA {}", arguments[0]));
+        output.push(String::from("LDA __ACCUMULATOR_BACKUP__"));
     }
 }

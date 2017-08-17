@@ -11,6 +11,9 @@
 
 .byte my_print_count $02
 
+.byte mov_var1 $A5
+.byte mov_var2 $7D
+
 $string hey_str "hey there"
 $string __print_string "test string"
 
@@ -35,3 +38,8 @@ PRT $AAA0
 $call print_times my_print_count
 TOS $AAA1
 PRT $AAA1
+
+$mov mov_var1 mov_var2
+LDA mov_var1
+TOS $0A72
+PRT $0A72
