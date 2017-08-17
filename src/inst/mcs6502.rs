@@ -17,10 +17,15 @@ pub enum AddressMode {
     IndirectY,
     Relative,
     Accumulator,
+
+    // Custom modes for the assembler.
     Label,
     LabelX,
     LabelY,
-    // TODO: IndirectLabel + X/Y?
+    ILabel,
+    ILabelX,
+    ILabelY,
+
     None
 }
 
@@ -557,7 +562,29 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
         return (AddressMode::Implied, 0u16);
     }
 
-    // Special case, indexed labels.
+    // Indirect labels.
+    if chars[0] == '(' {
+        if chars[size - 1] == ')' {
+            if chars[size - 2] == 'X' {
+                addr_mode = AddressMode::ILabelX;
+                chars[size - 3] = ')'; // Overwrite comma.
+            } else {
+                addr_mode = AddressMode::ILabel;
+            }
+        } else if chars[size - 1] == 'Y' {
+            addr_mode = AddressMode::ILabelY;
+        }
+
+        let chars = util::extract_indirect_target(&chars);
+        let argument: String = chars.into_iter().collect();
+        if is_valid_label(&argument, false) {
+            return (addr_mode, 0u16);
+        } else {
+            return (AddressMode::None, 0u16);
+        }
+    }
+
+    // Indexed labels.
     if chars[size - 1] == 'X' || chars[size - 1] == 'Y' {
         let mut chars = chars.clone();
         let mut mode = AddressMode::None;
@@ -578,7 +605,6 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
             return (mode, 0u16);
         }
     }
-    // TODO: Indirect labels?
 
     let size = chars.len();
     if size == 1 && chars[0] == 'A' {
@@ -625,15 +651,7 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
             addr_mode = AddressMode::IndirectY;
         }
 
-        let mut argument: Vec<char> = Vec::new();
-        for i in 1..size - 1 {
-            if chars[i] != ')' {
-                argument.push(chars[i]);
-            } else {
-                break;
-            }
-        }
-
+        let argument = util::extract_indirect_target(&chars);
         if argument.len() > 1 {
             let res = extract_operand_u8(&argument, 0);
             match res {
@@ -689,9 +707,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::AbsoluteY => {
                     ops::ADC_ABSOLUTE_Y
                 }
+                AddressMode::ILabelX   |
                 AddressMode::IndirectX => {
                     ops::ADC_INDIRECT_X
                 }
+                AddressMode::ILabelY   |
                 AddressMode::IndirectY => {
                     ops::ADC_INDIRECT_Y
                 }
@@ -721,9 +741,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::AbsoluteY => {
                     ops::AND_ABSOLUTE_Y
                 }
+                AddressMode::ILabelX   |
                 AddressMode::IndirectX => {
                     ops::AND_INDIRECT_X
                 }
+                AddressMode::ILabelY   |
                 AddressMode::IndirectY => {
                     ops::AND_INDIRECT_Y
                 }
@@ -899,9 +921,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::AbsoluteY => {
                     ops::CMP_ABSOLUTE_Y
                 }
+                AddressMode::ILabelX   |
                 AddressMode::IndirectX => {
                     ops::CMP_INDIRECT_X
                 }
+                AddressMode::ILabelY   |
                 AddressMode::IndirectY => {
                     ops::CMP_INDIRECT_Y
                 }
@@ -996,9 +1020,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::AbsoluteY => {
                     ops::EOR_ABSOLUTE_Y
                 }
+                AddressMode::ILabelX   |
                 AddressMode::IndirectX => {
                     ops::EOR_INDIRECT_X
                 }
+                AddressMode::ILabelY   |
                 AddressMode::IndirectY => {
                     ops::EOR_INDIRECT_Y
                 }
@@ -1046,6 +1072,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute => {
                     ops::JMP_ABSOLUTE
                 }
+                AddressMode::ILabel   |
                 AddressMode::Indirect => {
                     ops::JMP_INDIRECT
                 }
@@ -1084,9 +1111,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::AbsoluteY => {
                     ops::LDA_ABSOLUTE_Y
                 }
+                AddressMode::ILabelX   |
                 AddressMode::IndirectX => {
                     ops::LDA_INDIRECT_X
                 }
+                AddressMode::ILabelY   |
                 AddressMode::IndirectY => {
                     ops::LDA_INDIRECT_Y
                 }
@@ -1190,9 +1219,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::AbsoluteY => {
                     ops::ORA_ABSOLUTE_Y
                 }
+                AddressMode::ILabelX   |
                 AddressMode::IndirectX => {
                     ops::ORA_INDIRECT_X
                 }
+                AddressMode::ILabelY   |
                 AddressMode::IndirectY => {
                     ops::ORA_INDIRECT_Y
                 }
@@ -1314,9 +1345,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::AbsoluteY => {
                     ops::SBC_ABSOLUTE_Y
                 }
+                AddressMode::ILabelX   |
                 AddressMode::IndirectX => {
                     ops::SBC_INDIRECT_X
                 }
+                AddressMode::ILabelY   |
                 AddressMode::IndirectY => {
                     ops::SBC_INDIRECT_Y
                 }
@@ -1367,9 +1400,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::AbsoluteY => {
                     ops::STA_ABSOLUTE_Y
                 }
+                AddressMode::ILabelX   |
                 AddressMode::IndirectX => {
                     ops::STA_INDIRECT_X
                 }
+                AddressMode::ILabelY   |
                 AddressMode::IndirectY => {
                     ops::STA_INDIRECT_Y
                 }
@@ -1518,27 +1553,27 @@ pub fn can_branch_to_label(op: u8) -> bool {
 
 pub fn can_use_variables(op: u8) -> bool {
     match op {
-        ops::ADC_ABSOLUTE |
-        ops::AND_ABSOLUTE |
-        ops::ASL_ABSOLUTE |
-        ops::BIT_ABSOLUTE |
-        ops::CMP_ABSOLUTE |
-        ops::CPX_ABSOLUTE |
-        ops::CPY_ABSOLUTE |
-        ops::DEC_ABSOLUTE |
-        ops::EOR_ABSOLUTE |
-        ops::INC_ABSOLUTE |
-        ops::LDA_ABSOLUTE |
-        ops::LDX_ABSOLUTE |
-        ops::LDY_ABSOLUTE |
-        ops::LSR_ABSOLUTE |
-        ops::ORA_ABSOLUTE |
-        ops::ROL_ABSOLUTE |
-        ops::ROR_ABSOLUTE |
-        ops::SBC_ABSOLUTE |
-        ops::STA_ABSOLUTE |
-        ops::STX_ABSOLUTE |
-        ops::STY_ABSOLUTE |
+        ops::ADC_ABSOLUTE   |
+        ops::AND_ABSOLUTE   |
+        ops::ASL_ABSOLUTE   |
+        ops::BIT_ABSOLUTE   |
+        ops::CMP_ABSOLUTE   |
+        ops::CPX_ABSOLUTE   |
+        ops::CPY_ABSOLUTE   |
+        ops::DEC_ABSOLUTE   |
+        ops::EOR_ABSOLUTE   |
+        ops::INC_ABSOLUTE   |
+        ops::LDA_ABSOLUTE   |
+        ops::LDX_ABSOLUTE   |
+        ops::LDY_ABSOLUTE   |
+        ops::LSR_ABSOLUTE   |
+        ops::ORA_ABSOLUTE   |
+        ops::ROL_ABSOLUTE   |
+        ops::ROR_ABSOLUTE   |
+        ops::SBC_ABSOLUTE   |
+        ops::STA_ABSOLUTE   |
+        ops::STX_ABSOLUTE   |
+        ops::STY_ABSOLUTE   |
         ops::ADC_ABSOLUTE_X |
         ops::AND_ABSOLUTE_X |
         ops::ASL_ABSOLUTE_X |
@@ -1562,7 +1597,24 @@ pub fn can_use_variables(op: u8) -> bool {
         ops::LDX_ABSOLUTE_Y |
         ops::ORA_ABSOLUTE_Y |
         ops::SBC_ABSOLUTE_Y |
-        ops::STA_ABSOLUTE_Y => true,
+        ops::STA_ABSOLUTE_Y |
+        ops::JMP_INDIRECT   |
+        ops::ADC_INDIRECT_X |
+        ops::AND_INDIRECT_X |
+        ops::CMP_INDIRECT_X |
+        ops::EOR_INDIRECT_X |
+        ops::LDA_INDIRECT_X |
+        ops::ORA_INDIRECT_X |
+        ops::SBC_INDIRECT_X |
+        ops::STA_INDIRECT_X |
+        ops::ADC_INDIRECT_Y |
+        ops::AND_INDIRECT_Y |
+        ops::CMP_INDIRECT_Y |
+        ops::EOR_INDIRECT_Y |
+        ops::LDA_INDIRECT_Y |
+        ops::ORA_INDIRECT_Y |
+        ops::SBC_INDIRECT_Y |
+        ops::STA_INDIRECT_Y => true,
 
         ops::custom::TOS_ABSOLUTE |
         ops::custom::PRT_ABSOLUTE => true,

@@ -23,6 +23,21 @@ pub fn dump_rom(rom: &Memory) {
     println!("-------------");
 }
 
+pub fn extract_indirect_target(chars: &[char]) -> Vec<char> {
+    let size = chars.len();
+
+    let mut target: Vec<char> = Vec::new();
+    for i in 1..size - 1 {
+        if chars[i] != ')' {
+            target.push(chars[i]);
+        } else {
+            break;
+        }
+    }
+
+    target
+}
+
 #[inline]
 pub fn lower(data: u16) -> u8 {
     (data & 0xFF) as u8

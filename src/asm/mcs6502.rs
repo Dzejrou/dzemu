@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use asm::Assembler;
 use inst::mcs6502;
+use inst::mcs6502::addr;
 use inst::mcs6502::AddressMode;
 use util;
 
@@ -74,7 +75,12 @@ impl Assembler for Assembler6502 {
             match self.vars.get(var) {
                 Some(&target) => {
                     self.data[(addr + 1) as usize] = util::lower(target);
-                    self.data[(addr + 2) as usize] = util::upper(target);
+
+                    // IndirectX and IndirectY only have 1 byte operand.
+                    let mode = addr::get_addr_mode(self.data[addr as usize]);
+                    if addr::pc_offset(&mode)  == 3 {
+                        self.data[(addr + 2) as usize] = util::upper(target);
+                    }
                 }
                 None => {
                     panic!("Variable not defined: {}", var);
@@ -318,6 +324,9 @@ impl Assembler6502 {
                 self.push_three_byte(op, operand);
             }
 
+            AddressMode::ILabel      |
+            AddressMode::ILabelX     |
+            AddressMode::ILabelY     |
             AddressMode::Label       |
             AddressMode::LabelX      |
             AddressMode::LabelY      => {
@@ -333,14 +342,26 @@ impl Assembler6502 {
                     self.push_two_byte(op, 0x00u8);
                 } else if mcs6502::can_use_variables(op) {
                     self.var_uses.insert(data_end, label);
-                    self.push_three_byte(op, 0x0000u16);
+                    match mode {
+                        AddressMode::ILabel      |
+                        AddressMode::Label       |
+                        AddressMode::LabelX      |
+                        AddressMode::LabelY      => {
+                            self.push_three_byte(op, 0x0000u16);
+                        }
+                        AddressMode::ILabelX     |
+                        AddressMode::ILabelY     => {
+                            self.push_two_byte(op, 0x00u8);
+                        }
+                        _                        => ()
+                    }
                 } else {
                     panic!("Instruction cannot use label: 0x{:X} {} ({:?})", op, label, mode);
                 }
             }
 
             _                     => {
-                panic!("Invalid address mode {:?} for opcode: {}", mode, op);
+                panic!("Invalid address mode {:?} for opcode: 0x{:X}", mode, op);
             }
         }
     }
@@ -365,6 +386,11 @@ impl Assembler6502 {
         let mut res = String::new();
 
         let mut c = chars.next().unwrap_or(' ');
+        if c == '(' {
+            // Indirect, ignore this.
+            c = chars.next().unwrap_or(' ');
+        }
+
         while c.is_alphanumeric() || c == '_' {
             res.push(c);
             c = chars.next().unwrap_or(' ');
