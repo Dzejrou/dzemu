@@ -3,6 +3,7 @@ use std::io::Read;
 
 use mems::Memory;
 use inst::mcs6502;
+use inst::mcs6502::ops;
 
 pub fn read_rom(fname: &str) -> Vec<u8> {
     let rom_file = match File::open(fname) {
@@ -17,8 +18,17 @@ pub fn dump_rom(rom: &Memory) {
     println!("Rom contents:");
     let mut idx = 0;
     while idx < rom.size() {
+        let opcode = rom.read_u8(idx);
+        let mut offset = 0u8;
+
+        if opcode == ops::custom::VARIABLE {
+            offset = rom.read_u8(idx + 1);
+        }
+
         let i = idx;
         println!("0x{:04X}: {}", i, mcs6502::op_to_str(rom, &mut idx));
+
+        idx = idx + offset as usize;
     }
     println!("-------------");
 }

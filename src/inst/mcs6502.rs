@@ -35,6 +35,10 @@ pub mod addr {
 
     pub fn pc_offset(mode: &AddressMode) -> usize {
         match *mode {
+            AddressMode::Label     |
+            AddressMode::LabelX    |
+            AddressMode::LabelY    |
+            AddressMode::ILabel    |
             AddressMode::Absolute  |
             AddressMode::AbsoluteX |
             AddressMode::AbsoluteY |
@@ -213,6 +217,8 @@ pub mod addr {
 
             ops::custom::TOS_ABSOLUTE |
             ops::custom::PRT_ABSOLUTE => AddressMode::Absolute,
+
+            ops::custom::VARIABLE     => AddressMode::Immediate,
 
             _ => AddressMode::None,
         }
@@ -484,6 +490,7 @@ pub mod ops {
     pub const TXS_IMPLIED:     u8 = 0x9A;
 
     pub mod custom {
+        pub const VARIABLE:     u8 = 0xFB;
         pub const TOS_ABSOLUTE: u8 = 0xFC;
         pub const PRT_ABSOLUTE: u8 = 0xFF;
     }
@@ -1487,6 +1494,14 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
             }
         }
+        "VAR" => {
+            match *mode {
+                AddressMode::Immediate => {
+                    ops::custom::VARIABLE
+                }
+                _ => panic!("Unknown address mode for instruction {}: {:?}", op, mode)
+            }
+        }
         "TOS" => {
             match *mode {
                 AddressMode::Label    |
@@ -1522,7 +1537,7 @@ pub fn is_valid_instruction(op: &str) -> bool {
         "ROR" | "RTI" | "RTS" | "SBC" | "SEC" |
         "SED" | "SEI" | "STA" | "STX" | "STY" |
         "TAX" | "TAY" | "TYA" | "TSX" | "TXA" |
-        "TXS" | "PRT" | "TOS" => true,
+        "TXS" | "PRT" | "TOS" | "VAR" => true,
         &_    => false
     }
 }
@@ -1830,6 +1845,8 @@ pub fn op_name(opcode: u8) -> String {
         ops::TXA_IMPLIED          => "TXA",
 
         ops::TXS_IMPLIED          => "TXS",
+
+        ops::custom::VARIABLE     => "VAR",
 
         ops::custom::TOS_ABSOLUTE => "TOS",
 

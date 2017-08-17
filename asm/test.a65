@@ -1,45 +1,36 @@
-.include "print.a65"
-.include "math.a65"
+$string hello "Hello, world!"
 
-.byte loop_count $05
-.byte hello $48 $45 $4C $4C $4F $00
-.byte hallo $48 $41 $4C $4C $4F $00
-.byte start_addr $20
+.byte __tmp $00 $00 $00 $00 $00 $00 $00
+.byte __num $00
 
-.byte push_test $05
-.byte pop_test $04
+.macro print __var
+  $mov __num __var
+  JSR print_num
 
-.byte my_print_count $02
+__clear_tmp:
+LDX #$07
+LDA #$00
+__clear_loop:
+STA __tmp, X
+DEX
+BNE __clear_loop
+RTS
 
-.byte mov_var1 $A5
-.byte mov_var2 $7D
+print_num:
+LDA __num
+TOS __tmp
+PRT __tmp
+JSR __clear_tmp
+RTS
 
-$string hey_str "hey there"
-$string __print_string "test string"
-
-.macro test_arg _arg1 _arg2
-  $test _arg1
-  $test _arg2
-  $test _arg1
-
-.macro test _arg
-  PRT _arg
+.byte var1 $EF
+.byte var2 $09
+.byte var3 $AD
 
 start:
-$test_arg hallo hello
-$test hey_str
 
-$PUSH push_test
-$POP pop_test
-LDA pop_test
-TOS $AAA0
-PRT $AAA0
+PRT hello
 
-$call print_times my_print_count
-TOS $AAA1
-PRT $AAA1
-
-$mov mov_var1 mov_var2
-LDA mov_var1
-TOS $0A72
-PRT $0A72
+$print var1
+$print var2
+$print var3

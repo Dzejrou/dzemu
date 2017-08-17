@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use asm::Assembler;
 use inst::mcs6502;
+use inst::mcs6502::ops;
 use inst::mcs6502::addr;
 use inst::mcs6502::AddressMode;
 use util;
@@ -17,7 +18,6 @@ pub struct Assembler6502 {
     branches:  HashMap<u16, String>,
     vars:      HashMap<String, u16>,
     var_uses:  HashMap<u16, String>,
-    values:    HashMap<String, Vec<u8>>,
     prep:      Preprocessor
 }
 
@@ -31,7 +31,6 @@ impl Assembler6502 {
             branches: HashMap::new(),
             vars:     HashMap::new(),
             var_uses: HashMap::new(),
-            values:   HashMap::new(),
             prep:     Preprocessor::new()
         }
     }
@@ -55,24 +54,14 @@ impl Assembler for Assembler6502 {
         //       This would allow inserting code after
         //       assembling but before linking.
         if !self.labels.contains_key("START:") {
-            println!("LABELS: {:?}", self.labels);
             panic!("Start label not defined.");
         }
 
         // Skip data section.
         self.translate("JMP END");
-
-        // Calculate address and insert initial values.
-        for (name, addr) in self.vars.iter_mut() {
-            *addr = self.data.len() as u16;
-            let name = name.clone();
-
-            let default = vec![0];
-            let values = self.values.get(&*name).unwrap_or(&default);
-            for value in values.iter() {
-                self.data.push(*value);
-            }
-        }
+        self.translate("NOP");
+        self.translate("NOP");
+        self.translate("NOP");
 
         for (&addr, var) in self.var_uses.iter() {
             match self.vars.get(var) {
@@ -287,6 +276,16 @@ impl Assembler6502 {
 
         let count = words.len();
         let mut values: Vec<u8> = Vec::new();
+
+        // Marker for dissasembler.
+        values.push(ops::custom::VARIABLE);
+        values.push((count - 2) as u8);
+
+        // Default value.
+        if count == 2 {
+            values.push(0x00u8);
+        }
+
         for i in 2..count {
             let chars: Vec<char> = words[i].chars().collect();
             let value = mcs6502::extract_operand_u8(&chars, 0);
@@ -303,8 +302,13 @@ impl Assembler6502 {
 
         let mut name = String::from(words[1]);
         name.push_str(":");
-        self.vars.insert(name.clone(), 0u16);
-        self.values.insert(name, values);
+
+        // Variables are where they were declared.
+        self.vars.insert(name.clone(), (self.data.len() + 2) as u16);
+
+        for value in values.iter() {
+            self.data.push(*value);
+        }
     }
 
     fn push_instruction(&mut self, op: u8, operand: u16, mode: AddressMode, arg: &str) {
@@ -418,7 +422,6 @@ struct Macro {
 
 pub struct Preprocessor {
     macros:      HashMap<String, Macro>,
-    aux_id:      usize,
     aux_defined: bool
 }
 
@@ -426,7 +429,6 @@ impl Preprocessor {
     pub fn new() -> Preprocessor {
         Preprocessor {
             macros:      HashMap::new(),
-            aux_id:      0,
             aux_defined: false
         }
     }
@@ -471,9 +473,6 @@ impl Preprocessor {
         // Auxiliary variables.
         if !self.aux_defined {
             output.push(String::from(".BYTE __ACCUMULATOR_BACKUP__ $00"));
-            output.push(String::from(".BYTE __RET_VAL__ $00"));
-            output.push(String::from(".BYTE __PC_LO__ $00"));
-            output.push(String::from(".BYTE __PC_HI__ $00"));
             self.aux_defined = true;
         }
 
@@ -501,15 +500,6 @@ impl Preprocessor {
                         }
 
                         self.register_macro(macro_code);
-                    } else if line.starts_with("$PROCEDURE ") {
-                        self.macro_procedure(&line, &mut output);
-                        expanded = true;
-                    } else if line.starts_with("$CALL ") {
-                        self.macro_call(&line, &mut output);
-                        expanded = true;
-                    } else if line.starts_with("$RET ") {
-                        self.macro_ret(&line, &mut output);
-                        expanded = true;
                     } else if line.starts_with("$PUSH ") {
                         self.macro_push(&line, &mut output);
                         expanded = true;
@@ -560,10 +550,15 @@ impl Preprocessor {
                         let mut line: Vec<String> = Vec::new();
 
                         for token in tokens {
-                            if mapping.contains_key(token) {
-                                line.push(mapping.get(token).unwrap().clone());
+                            let token = token.to_string();
+                            // TODO: Fix indexed access!
+                            // TODO: Fix indirect parens!
+
+                            let matches = mapping.contains_key(&token);
+                            if matches {
+                                line.push(mapping.get(&token).unwrap().clone());
                             } else {
-                                line.push(token.to_string());
+                                line.push(token.clone());
                             }
                         }
 
@@ -580,78 +575,10 @@ impl Preprocessor {
                     }
                 }
 
+            } else {
+                panic!("Unknown macro: {}", name);
             }
         }
-    }
-
-    fn macro_procedure(&mut self, line: &str, output: &mut Vec<String>) {
-        let mut tokens = line.split_whitespace();
-        tokens.next();
-
-        let arguments: Vec<&str> = tokens.collect();
-
-        let argc = arguments.len();
-        if argc > 0 {
-            output.push(format!("{}:", arguments[0]));
-        }
-
-        if argc > 1 {
-            for i in 1 .. argc {
-                output.push(format!(".BYTE {}", arguments[i]));
-            }
-
-            for i in 1 .. argc {
-                output.push(format!("$POP {}", arguments[argc - i]));
-            }
-        }
-    }
-
-    fn macro_call(&mut self, line: &str, output: &mut Vec<String>) {
-        let mut tokens = line.split_whitespace();
-        tokens.next();
-
-        let arguments: Vec<&str> = tokens.collect();
-
-        let argc = arguments.len();
-        if argc == 1 {
-            output.push(format!("JSR {}", arguments[0]));
-        } else if argc == 0 {
-            panic!("The $call macro requires at least one argument!");
-        } else {
-            let aux_label1 = format!("__AUX_CALL_LABEL_{}__", self.aux_id);
-            self.aux_id = self.aux_id.wrapping_add(1);
-            let aux_label2 = format!("__AUX_CALL_LABEL_{}__", self.aux_id);
-            self.aux_id = self.aux_id.wrapping_add(1);
-
-            output.push(format!("JMP {}", aux_label2));
-            output.push(format!("{}:", aux_label1));
-            for i in 1 .. argc {
-                output.push(format!("$PUSH {}", arguments[i]));
-            } // No need to preserve PC on the stack, $procedure will $pop all args.
-            output.push(format!("JMP {}", arguments[0]));
-            output.push(format!("{}:", aux_label2));
-            output.push(format!("JSR {}", aux_label1));
-            // RTS will jump after this ^^^ instruction, the area between aux_label1
-            // and aux_label2 is protected by the first JMP instruction.
-        }
-    }
-
-    fn macro_ret(&mut self, line: &str, output: &mut Vec<String>) {
-        let mut tokens = line.split_whitespace();
-        tokens.next();
-
-        let arguments: Vec<&str> = tokens.collect();
-
-        if arguments.len() != 1 {
-            panic!("The $ret macro supports only one argument, {} given {:?}",
-                   arguments.len(), arguments);
-        }
-
-        output.push(String::from("STA __ACCUMULATOR_BACKUP__"));
-        output.push(format!("LDA {}", arguments[0]));
-        output.push(String::from("STA __RET_VAL__"));
-        output.push(String::from("LDA __ACCUMULATOR_BACKUP__"));
-        output.push(String::from("RTS"));
     }
 
     fn macro_push(&mut self, line: &str, output: &mut Vec<String>) {
