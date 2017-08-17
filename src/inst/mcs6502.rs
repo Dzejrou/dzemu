@@ -481,7 +481,7 @@ pub mod ops {
     }
 }
 
-fn extract_operand_u8(chars: &[char], off: u8) -> Option<u16> {
+pub fn extract_operand_u8(chars: &[char], off: u8) -> Option<u16> {
     let mut off = off as usize;
 
     let base;
@@ -499,7 +499,7 @@ fn extract_operand_u8(chars: &[char], off: u8) -> Option<u16> {
     util::u16_to_number(util::to_u16(digit1, digit2), base)
 }
 
-fn extract_operand_u16(chars: &[char], off: u8) -> Option<u16> {
+pub fn extract_operand_u16(chars: &[char], off: u8) -> Option<u16> {
     let mut off = off as usize;
     let base;
 
@@ -1386,6 +1386,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
         }
         "PRT" => {
             match *mode {
+                AddressMode::Label    |
                 AddressMode::Absolute => {
                     ops::custom::PRT_ABSOLUTE
                 }
@@ -1460,7 +1461,8 @@ pub fn can_use_variables(op: u8) -> bool {
         ops::STX_ABSOLUTE |
         ops::STY_ABSOLUTE => true,
 
-        ops::custom::TOS_ABSOLUTE => true,
+        ops::custom::TOS_ABSOLUTE |
+        ops::custom::PRT_ABSOLUTE => true,
 
         _                 => false
     }

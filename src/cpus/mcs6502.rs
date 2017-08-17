@@ -293,7 +293,7 @@ impl<M: Memory> Cpu<M> for Mcs6502<M> {
 
             ops::custom::PRT_ABSOLUTE => self.op_prt(),
 
-            op => panic!("Unknown opcode: {}", op)
+            op => panic!("Unknown opcode: 0x{:X}", op)
         }
 
         self.pc = self.pc.wrapping_add(addr::pc_offset(&self.addr_mode));

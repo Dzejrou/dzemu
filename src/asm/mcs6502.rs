@@ -14,7 +14,8 @@ pub struct Assembler6502 {
     jumps:     HashMap<u16, String>,
     branches:  HashMap<u16, String>,
     vars:      HashMap<String, u16>,
-    var_uses:  HashMap<u16, String>
+    var_uses:  HashMap<u16, String>,
+    values:    HashMap<String, Vec<u8>>
 }
 
 impl Assembler6502 {
@@ -25,7 +26,8 @@ impl Assembler6502 {
             jumps:    HashMap::new(),
             branches: HashMap::new(),
             vars:     HashMap::new(),
-            var_uses: HashMap::new()
+            var_uses: HashMap::new(),
+            values:   HashMap::new()
         }
     }
 }
@@ -50,6 +52,37 @@ impl Assembler for Assembler6502 {
         if !self.labels.contains_key("START:") {
             panic!("Start label not defined.");
         }
+
+        // Skip data section.
+        self.translate("JMP END");
+
+        // Calculate address and insert initial values.
+        for (name, addr) in self.vars.iter_mut() {
+            *addr = self.data.len() as u16;
+            let name = name.clone();
+
+            let default = vec![0];
+            let values = self.values.get(&*name).unwrap_or(&default);
+            for value in values.iter() {
+                self.data.push(*value);
+            }
+        }
+
+        for (&addr, var) in self.var_uses.iter() {
+            match self.vars.get(var) {
+                Some(&target) => {
+                    self.data[(addr + 1) as usize] = util::lower(target);
+                    self.data[(addr + 2) as usize] = util::upper(target);
+                }
+                None => {
+                    println!("{:?}", self.vars);
+                    panic!("Variable not defined: {}", var);
+                }
+            }
+        }
+
+        self.translate("END:");
+        self.translate("NOP");
 
         for (&addr, label) in self.jumps.iter() {
             match self.labels.get(label) {
@@ -77,19 +110,6 @@ impl Assembler for Assembler6502 {
                     }
                 }
                 None => panic!("Label not defined: {}", label)
-            }
-        }
-
-        for (&addr, var) in self.var_uses.iter() {
-            match self.vars.get(var) {
-                Some(&target) => {
-                    self.data[(addr + 1) as usize] = util::lower(target);
-                    self.data[(addr + 2) as usize] = util::upper(target);
-                }
-                None => {
-                    println!("{:?}", self.vars);
-                    panic!("Variable not defined: {}", var);
-                }
             }
         }
     }
@@ -205,7 +225,6 @@ impl Assembler6502 {
                 // TODO: Special instruction + length before variable
                 //       so that disassembler knows to skip it, maybe only
                 //       in debug mode? Even with a name of the variable?
-                // TODO: Allow arrays?
                 self.declare_variable(&upper_line);
             } else if upper_line.starts_with(".WORD ") {
                 // TODO: 16 bit variables, also add 16 bit
@@ -227,10 +246,7 @@ impl Assembler6502 {
     fn get_include_file(&self, line: &str, input: &str) -> PathBuf {
         let (_, rest) = line.split_at(8);
         let line = &rest[2..];
-        let file_end = match line.rfind("\"") {
-            Some(num) => num,
-            None => 0
-        };
+        let file_end = line.rfind("\"").unwrap_or(0);
 
         if file_end == 0 {
             panic!("Invalid file include: {}", line);
@@ -246,32 +262,29 @@ impl Assembler6502 {
     }
 
     fn declare_variable(&mut self, line: &str) {
-        let (_, var) = line.split_at(5);
-        let var = var.trim();
-        let mut variable = var;
+        let words: Vec<&str> = line.split(" ").collect();
+        println!("VAR: {:?}", words);
 
-
-        let mut value = 0u8;
-        if let Some(space_idx) = var.find(" ") {
-            let (var, val) = var.split_at(space_idx);
-            let val = val.trim();
-
-            variable = var.trim();
-            let (addr_mode, val) = mcs6502::parse_arguments(val);
-            match addr_mode {
-                AddressMode::Absolute => value = util::lower(val),
-                mode => panic!("Variable is not a byte: {:?}", mode)
+        let count = words.len();
+        let mut values: Vec<u8> = Vec::new();
+        for i in 2..count {
+            let chars: Vec<char> = words[i].chars().collect();
+            let value = mcs6502::extract_operand_u8(&chars, 0);
+            if let Some(value) = value {
+                values.push(util::lower(value));
+            } else {
+                panic!("Invalid byte initializer: {}", words[i]);
             }
         }
 
-        if !mcs6502::is_valid_label(variable, false) {
-            panic!("Invalid variable name: '{}'", variable);
+        if !mcs6502::is_valid_label(words[1], false) {
+            panic!("Invalid variable name: '{}'", words[1]);
         }
 
-        let mut variable = String::from(variable);
-        variable.push_str(":");
-        self.vars.insert(variable, self.data.len() as u16);
-        self.data.push(value);
+        let mut name = String::from(words[1]);
+        name.push_str(":");
+        self.vars.insert(name.clone(), 0u16);
+        self.values.insert(name, values);
     }
 
     fn push_instruction(&mut self, op: u8, operand: u16, mode: AddressMode, arg: &str) {
@@ -300,6 +313,7 @@ impl Assembler6502 {
                 self.push_three_byte(op, operand);
             }
 
+            // TODO: LabelX and maybe LabelY!
             AddressMode::Label       => {
                 let mut label = String::from(arg).to_uppercase();
                 label.push_str(":");
