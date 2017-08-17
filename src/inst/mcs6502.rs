@@ -579,8 +579,6 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
         let argument: String = chars.into_iter().collect();
         if is_valid_label(&argument, false) {
             return (addr_mode, 0u16);
-        } else {
-            return (AddressMode::None, 0u16);
         }
     }
 

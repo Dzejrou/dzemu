@@ -17,7 +17,8 @@ pub struct Assembler6502 {
     branches:  HashMap<u16, String>,
     vars:      HashMap<String, u16>,
     var_uses:  HashMap<u16, String>,
-    values:    HashMap<String, Vec<u8>>
+    values:    HashMap<String, Vec<u8>>,
+    prep:      Preprocessor
 }
 
 impl Assembler6502 {
@@ -30,7 +31,8 @@ impl Assembler6502 {
             branches: HashMap::new(),
             vars:     HashMap::new(),
             var_uses: HashMap::new(),
-            values:   HashMap::new()
+            values:   HashMap::new(),
+            prep:     Preprocessor::new()
         }
     }
 }
@@ -53,6 +55,7 @@ impl Assembler for Assembler6502 {
         //       This would allow inserting code after
         //       assembling but before linking.
         if !self.labels.contains_key("START:") {
+            println!("LABELS: {:?}", self.labels);
             panic!("Start label not defined.");
         }
 
@@ -219,38 +222,37 @@ impl Assembler6502 {
         let file = File::open(input).
             expect(&format!("Unable to open input file: {}", input));
         let reader = BufReader::new(&file);
+        let mut lines: Vec<String> = reader.lines()
+                                        .map(|s| s.unwrap().to_string())
+                                        .collect();
 
-        for line in reader.lines() {
-            let line = line.unwrap();
+        lines = self.prep.process(lines);
+
+        for line in lines.iter() {
             let line = line.trim();
-            let upper_line = line.to_uppercase();
 
-            if upper_line.starts_with(".INCLUDE ") {
-                let file = self.get_include_file(&line, input);
+            if line.starts_with(".INCLUDE ") {
+                // This is a problem, includes will always be changed to lowercase :/
+                let file = self.get_include_file(&line.to_lowercase(), input);
                 let file = String::from(file.to_str().unwrap());
 
                 if !self.files.contains(&file) {
                     self.files.push(file.clone());
                     self.assemble_file(&file);
                 }
-            } else if upper_line.starts_with(".BYTE ") {
+            } else if line.starts_with(".BYTE ") {
                 // TODO: Special instruction + length before variable
                 //       so that disassembler knows to skip it, maybe only
                 //       in debug mode? Even with a name of the variable?
-                self.declare_variable(&upper_line);
-            } else if upper_line.starts_with(".WORD ") {
+                self.declare_variable(&line);
+            } else if line.starts_with(".WORD ") {
                 // TODO: 16 bit variables, also add 16 bit
                 //       custom instructions!
-            } else if upper_line.starts_with(".MACRO ") {
-                // TODO: Macros, probably add .ENDMACRO and change state,
-                //       while in macro state, instead of translate below
-                //       you define the macro until .ENDMACRO is found?
-                // TODO: Do it before compilation like C does?
-            } else if upper_line.starts_with(".STRING ") {
+            } else if line.starts_with(".STRING ") {
                 // TODO: Add strings? Basically same as .BYTE array, but
                 //       translates chars to bytes.
             } else if !line.is_empty() && !line.starts_with(";") {
-                self.translate(&upper_line);
+                self.translate(&line);
             }
         }
     }
@@ -397,5 +399,147 @@ impl Assembler6502 {
         }
 
         res
+    }
+}
+
+#[derive(Debug)]
+struct Macro {
+    pub name: String,
+    pub args: Vec<String>,
+    pub code: Vec<String>
+}
+
+pub struct Preprocessor {
+    macros: HashMap<String, Macro>
+}
+
+impl Preprocessor {
+    pub fn new() -> Preprocessor {
+        Preprocessor {
+            macros: HashMap::new()
+        }
+    }
+    pub fn register_macro(&mut self, code: Vec<String>) {
+        if code.len() > 1 {
+            let mut iter = code.iter();
+            let declaration = iter.next().unwrap();
+            if declaration == "" {
+                return;
+            }
+
+            let mut args: Vec<String> = Vec::new();
+            let mut code: Vec<String> = Vec::new();
+
+            let mut tokens = declaration.split_whitespace();
+
+            // Skip the .macro part.
+            tokens.next();
+            let mut name = String::from("$");
+            name.push_str(tokens.next().unwrap());
+
+            // TODO: Validate args to be valid labels.
+            while let Some(arg) = tokens.next() {
+                args.push(String::from(arg));
+            }
+
+            while let Some(line) = iter.next() {
+                code.push(line.trim().to_uppercase());
+            }
+
+            // Allow redefinitions.
+            self.macros.insert(name.clone(), Macro { name, args, code });
+        }
+    }
+
+    pub fn process(&mut self, code: Vec<String>) -> Vec<String> {
+        let mut expanded = true;
+        let mut iteration = 0u8;
+        let mut input: Vec<String> = code;
+        let mut output: Vec<String> = Vec::new();
+
+        while expanded && iteration < 4 {
+            expanded = false;
+            iteration += 1;
+
+            // Auxiliary block that limits iter's lifetime.
+            {
+                let mut iter = input.iter().peekable();
+                while let Some(line) = iter.next() {
+                    let line = line.to_uppercase();
+
+                    if line.starts_with(".MACRO ") {
+                        let mut macro_code: Vec<String> = Vec::new();
+                        macro_code.push(line.clone());
+
+                        while let Some(&line) = iter.peek() {
+                            if line.starts_with(" ") {
+                                macro_code.push(line.clone());
+                            } else {
+                                break;
+                            }
+                            iter.next();
+                        }
+
+                        self.register_macro(macro_code);
+                    } else if line.starts_with("$") {
+                        self.expand_macro(&line, &mut output);
+                        expanded = true;
+                    } else {
+                        output.push(line.clone());
+                    }
+                }
+            }
+
+            if expanded {
+                input = output;
+                output = Vec::new();
+            }
+        }
+
+        output
+    }
+
+    fn expand_macro(&mut self, line: &str, output: &mut Vec<String>) {
+        let mut tokens = line.split_whitespace();
+
+        if let Some(name) = tokens.next() {
+            if let Some(mac) = self.macros.get(name) {
+                let mut mapping: HashMap<String, String> = HashMap::new();
+                if mac.args.len() > 0 {
+                    for i in 0..mac.args.len() {
+                        if let Some(arg) = tokens.next() {
+                            mapping.insert(mac.args[i].clone(), arg.to_string());
+                        } else {
+                            panic!("Not enough arguments for macro {}: {}", name, i);
+                        }
+                    }
+
+                    for line in mac.code.iter() {
+                        let tokens = line.split_whitespace();
+                        let mut line: Vec<String> = Vec::new();
+
+                        for token in tokens {
+                            if mapping.contains_key(token) {
+                                line.push(mapping.get(token).unwrap().clone());
+                            } else {
+                                line.push(token.to_string());
+                            }
+                        }
+
+                        let mut out_line = String::new();
+                        for word in line.iter() {
+                            out_line.push_str(word);
+                            out_line.push_str(" ");
+                        }
+                        output.push(out_line.trim_right().to_string());
+                    }
+                } else {
+                    for i in 0 .. mac.code.len() {
+                        output.push(mac.code[i].clone());
+                    }
+                }
+
+            }
+        }
     }
 }

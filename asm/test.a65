@@ -3,25 +3,16 @@
 
 .byte loop_count $05
 .byte hello $48 $45 $4C $4C $4F $00
+.byte hallo $48 $41 $4C $4C $4F $00
 .byte start_addr $20
 
+.macro test_arg _arg1 _arg2
+  $test _arg1
+  $test _arg2
+  $test _arg1
+
+.macro test _arg
+  PRT _arg
+
 start:
-JSR print
-; JMP (start_addr)
-
-; Indexing on variables not working atm.
-LDY #$06
-LDA ($00), Y
-STA $25
-TOS $25
-PRT $25
-
-; Calculate _my_var1 * _my_var2.
-LDA #$05
-STA __mul1
-LDA #$07
-STA __mul2
-
-JSR math_mul
-TOS $20
-PRT $20
+$test_arg hallo hello
