@@ -9,6 +9,8 @@
 .byte push_test $05
 .byte pop_test $04
 
+.byte my_print_count $02
+
 $string hey_str "hey there"
 $string __print_string "test string"
 
@@ -30,8 +32,6 @@ LDA pop_test
 TOS $AAA0
 PRT $AAA0
 
-LDA #$0B
-STA __print_count
-$call print_times
+$call print_times my_print_count
 TOS $AAA1
 PRT $AAA1

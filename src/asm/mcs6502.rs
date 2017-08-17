@@ -177,7 +177,6 @@ impl Assembler6502 {
                 let rest = rest.trim();
 
                 let mut label = String::from(label).to_lowercase();
-                println!("{}", command);
                 assert!(mcs6502::is_valid_label(&label, true), "Invalid label: {}.", label);
                 if !label.ends_with(":") {
                     label.push_str(":");
@@ -418,13 +417,17 @@ struct Macro {
 }
 
 pub struct Preprocessor {
-    macros: HashMap<String, Macro>
+    macros:      HashMap<String, Macro>,
+    aux_id:      usize,
+    aux_defined: bool
 }
 
 impl Preprocessor {
     pub fn new() -> Preprocessor {
         Preprocessor {
-            macros: HashMap::new()
+            macros:      HashMap::new(),
+            aux_id:      0,
+            aux_defined: false
         }
     }
     pub fn register_macro(&mut self, code: Vec<String>) {
@@ -466,9 +469,13 @@ impl Preprocessor {
         let mut output: Vec<String> = Vec::new();
 
         // Auxiliary variables.
-        output.push(String::from(".BYTE __ACCUMULATOR_BACKUP__ $00"));
-        output.push(String::from(".BYTE __RET_VAL__ $00"));
-        output.push(String::from(".BYTE __RET_ADDRESS__ $00"));
+        if !self.aux_defined {
+            output.push(String::from(".BYTE __ACCUMULATOR_BACKUP__ $00"));
+            output.push(String::from(".BYTE __RET_VAL__ $00"));
+            output.push(String::from(".BYTE __PC_LO__ $00"));
+            output.push(String::from(".BYTE __PC_HI__ $00"));
+            self.aux_defined = true;
+        }
 
         while expanded && iteration < 4 {
             expanded = false;
@@ -496,16 +503,22 @@ impl Preprocessor {
                         self.register_macro(macro_code);
                     } else if line.starts_with("$PROCEDURE ") {
                         self.macro_procedure(&line, &mut output);
+                        expanded = true;
                     } else if line.starts_with("$CALL ") {
                         self.macro_call(&line, &mut output);
+                        expanded = true;
                     } else if line.starts_with("$RET ") {
                         self.macro_ret(&line, &mut output);
+                        expanded = true;
                     } else if line.starts_with("$PUSH ") {
                         self.macro_push(&line, &mut output);
+                        expanded = true;
                     } else if line.starts_with("$POP ") {
                         self.macro_pop(&line, &mut output);
+                        expanded = true;
                     } else if line.starts_with("$STRING ") {
                         self.macro_string(&line, &mut output);
+                        expanded = true;
                     } else if line.starts_with("$") {
                         self.expand_macro(&line, &mut output);
                         expanded = true;
@@ -583,6 +596,10 @@ impl Preprocessor {
             for i in 1 .. argc {
                 output.push(format!(".BYTE {}", arguments[i]));
             }
+
+            for i in 1 .. argc {
+                output.push(format!("$POP {}", arguments[argc - i]));
+            }
         }
     }
 
@@ -592,13 +609,27 @@ impl Preprocessor {
 
         let arguments: Vec<&str> = tokens.collect();
 
-        // Note: We can't store PC on the stack without jumping,
-        //       if ever such instruction is added, push it here and
-        //       push also arguments.
-        if arguments.len() == 1 {
+        let argc = arguments.len();
+        if argc == 1 {
             output.push(format!("JSR {}", arguments[0]));
-        } else {
+        } else if argc == 0 {
             panic!("The $call macro requires at least one argument!");
+        } else {
+            let aux_label1 = format!("__AUX_CALL_LABEL_{}__", self.aux_id);
+            self.aux_id = self.aux_id.wrapping_add(1);
+            let aux_label2 = format!("__AUX_CALL_LABEL_{}__", self.aux_id);
+            self.aux_id = self.aux_id.wrapping_add(1);
+
+            output.push(format!("JMP {}", aux_label2));
+            output.push(format!("{}:", aux_label1));
+            for i in 1 .. argc {
+                output.push(format!("$PUSH {}", arguments[i]));
+            } // No need to preserve PC on the stack, $procedure will $pop all args.
+            output.push(format!("JMP {}", arguments[0]));
+            output.push(format!("{}:", aux_label2));
+            output.push(format!("JSR {}", aux_label1));
+            // RTS will jump after this ^^^ instruction, the area between aux_label1
+            // and aux_label2 is protected by the first JMP instruction.
         }
     }
 
