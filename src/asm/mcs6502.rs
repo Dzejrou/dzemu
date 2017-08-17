@@ -177,6 +177,7 @@ impl Assembler6502 {
                 let rest = rest.trim();
 
                 let mut label = String::from(label).to_lowercase();
+                println!("{}", command);
                 assert!(mcs6502::is_valid_label(&label, true), "Invalid label: {}.", label);
                 if !label.ends_with(":") {
                     label.push_str(":");
@@ -227,6 +228,13 @@ impl Assembler6502 {
                                         .collect();
 
         lines = self.prep.process(lines);
+
+        // TODO: Remove, used for macro testing.
+        println!("Input after preprocessing:");
+        for line in lines.iter() {
+            println!("{}", line);
+        }
+        println!("");
 
         for line in lines.iter() {
             let line = line.trim();
@@ -457,6 +465,11 @@ impl Preprocessor {
         let mut input: Vec<String> = code;
         let mut output: Vec<String> = Vec::new();
 
+        // Auxiliary variables.
+        output.push(String::from(".BYTE __ACCUMULATOR_BACKUP__ $00"));
+        output.push(String::from(".BYTE __RET_VAL__ $00"));
+        output.push(String::from(".BYTE __RET_ADDRESS__ $00"));
+
         while expanded && iteration < 4 {
             expanded = false;
             iteration += 1;
@@ -557,58 +570,92 @@ impl Preprocessor {
 
     fn macro_procedure(&mut self, line: &str, output: &mut Vec<String>) {
         let mut tokens = line.split_whitespace();
-
-        // Skip name.
         tokens.next();
 
         let arguments: Vec<&str> = tokens.collect();
-        println!("PROCEDURE: {:?}", arguments);
+
+        let argc = arguments.len();
+        if argc > 0 {
+            output.push(format!("{}:", arguments[0]));
+        }
+
+        if argc > 1 {
+            for i in 1 .. argc {
+                output.push(format!(".BYTE {}", arguments[i]));
+            }
+        }
     }
 
     fn macro_call(&mut self, line: &str, output: &mut Vec<String>) {
         let mut tokens = line.split_whitespace();
-
-        // Skip name.
         tokens.next();
 
         let arguments: Vec<&str> = tokens.collect();
-        println!("CALL: {:?}", arguments);
+
+        // Note: We can't store PC on the stack without jumping,
+        //       if ever such instruction is added, push it here and
+        //       push also arguments.
+        if arguments.len() == 1 {
+            output.push(format!("JSR {}", arguments[0]));
+        } else {
+            panic!("The $call macro requires at least one argument!");
+        }
     }
 
     fn macro_ret(&mut self, line: &str, output: &mut Vec<String>) {
         let mut tokens = line.split_whitespace();
-
-        // Skip name.
         tokens.next();
 
         let arguments: Vec<&str> = tokens.collect();
-        println!("RET: {:?}", arguments);
+
+        if arguments.len() != 1 {
+            panic!("The $ret macro supports only one argument, {} given {:?}",
+                   arguments.len(), arguments);
+        }
+
+        output.push(String::from("STA __ACCUMULATOR_BACKUP__"));
+        output.push(format!("LDA {}", arguments[0]));
+        output.push(String::from("STA __RET_VAL__"));
+        output.push(String::from("LDA __ACCUMULATOR_BACKUP__"));
+        output.push(String::from("RTS"));
     }
 
     fn macro_push(&mut self, line: &str, output: &mut Vec<String>) {
         let mut tokens = line.split_whitespace();
-
-        // Skip name.
         tokens.next();
 
         let arguments: Vec<&str> = tokens.collect();
-        println!("PUSH: {:?}", arguments);
+
+        if arguments.len() != 1 {
+            panic!("The $push macro supports only one argument, {} given {:?}",
+                   arguments.len(), arguments);
+        }
+
+        output.push(String::from("STA __ACCUMULATOR_BACKUP__"));
+        output.push(format!("LDA {}", arguments[0]));
+        output.push(String::from("PHA"));
+        output.push(String::from("LDA __ACCUMULATOR_BACKUP__"));
     }
 
     fn macro_pop(&mut self, line: &str, output: &mut Vec<String>) {
         let mut tokens = line.split_whitespace();
-
-        // Skip name.
         tokens.next();
 
         let arguments: Vec<&str> = tokens.collect();
-        println!("POP: {:?}", arguments);
+
+        if arguments.len() != 1 {
+            panic!("The $pop macro supports only one argument, {} given {:?}",
+                   arguments.len(), arguments);
+        }
+
+        output.push(String::from("STA __ACCUMULATOR_BACKUP__"));
+        output.push(String::from("PLA"));
+        output.push(format!("STA {}", arguments[0]));
+        output.push(String::from("LDA __ACCUMULATOR_BACKUP__"));
     }
 
     fn macro_string(&mut self, line: &str, output: &mut Vec<String>) {
         let mut tokens = line.split_whitespace();
-
-        // Skip name.
         tokens.next();
 
         let arguments: Vec<&str> = tokens.collect();

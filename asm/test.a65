@@ -6,7 +6,11 @@
 .byte hallo $48 $41 $4C $4C $4F $00
 .byte start_addr $20
 
+.byte push_test $05
+.byte pop_test $04
+
 $string hey_str "hey there"
+$string __print_string "test string"
 
 .macro test_arg _arg1 _arg2
   $test _arg1
@@ -19,3 +23,15 @@ $string hey_str "hey there"
 start:
 $test_arg hallo hello
 $test hey_str
+
+$PUSH push_test
+$POP pop_test
+LDA pop_test
+TOS $AAA0
+PRT $AAA0
+
+LDA #$0B
+STA __print_count
+$call print_times
+TOS $AAA1
+PRT $AAA1

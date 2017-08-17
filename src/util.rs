@@ -118,6 +118,11 @@ pub fn u16_to_number(word: u16, base: u8) -> Option<u16> {
     Some(hi_byte * base + lo_byte)
 }
 
+fn is_valid_label_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
+
+}
+
 pub fn is_valid_label(label: &str, decl: bool) -> bool {
     let chars: Vec<char> = label.chars().collect();
     let len = chars.len();
@@ -127,16 +132,16 @@ pub fn is_valid_label(label: &str, decl: bool) -> bool {
     }
 
     for i in 1..len - 2 {
-        if !chars[i].is_alphanumeric() && chars[i] != '_' {
+        if !is_valid_label_char(chars[i]) {
             return false;
         }
     }
 
     // Labels can optionally end with colon when declared.
     if decl {
-        chars[len - 1] == ':' || chars[len - 1].is_alphabetic()
+        chars[len - 1] == ':' || is_valid_label_char(chars[len - 1])
     } else {
-        chars[len - 1].is_alphanumeric()
+        is_valid_label_char(chars[len - 1])
     }
 }
 

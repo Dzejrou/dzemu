@@ -1,9 +1,9 @@
 ; Prints the string to stdout.
-print:
-LDX loop_count
+$procedure print_times __print_count
+LDX __print_count
 
 print_loop:
-PRT hello
+PRT __print_string
 DEX
 BNE print_loop
-RTS
+$RET __print_count
