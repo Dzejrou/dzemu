@@ -18,6 +18,9 @@ pub enum AddressMode {
     Relative,
     Accumulator,
     Label,
+    LabelX,
+    LabelY,
+    // TODO: IndirectLabel + X/Y?
     None
 }
 
@@ -549,12 +552,37 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
     let mut addr_mode = AddressMode::None;
     let mut operand = 0u16;
 
+    let size = chars.len();
+    if size == 0 {
+        return (AddressMode::Implied, 0u16);
+    }
+
+    // Special case, indexed labels.
+    if chars[size - 1] == 'X' || chars[size - 1] == 'Y' {
+        let mut chars = chars.clone();
+        let mut mode = AddressMode::None;
+
+        if chars[size - 1] == 'X' {
+            mode = AddressMode::LabelX;
+        } else if chars[size - 1] == 'Y' {
+            mode = AddressMode::LabelY;
+        }
+
+        chars.pop();
+        if chars[size - 2] == ',' {
+            chars.pop();
+        }
+
+        let label: String = chars.into_iter().collect();
+        if is_valid_label(&label, false) {
+            return (mode, 0u16);
+        }
+    }
+
     // TODO: Refactor this into a state automaton or something.
     // TODO: Error reporting.
     // TODO: Indirect addressing modes.
-    if chars.len() == 0 {
-        addr_mode = AddressMode::Implied;
-    } else if chars.len() == 1 && chars[0] == 'A' {
+    if chars.len() == 1 && chars[0] == 'A' {
         addr_mode = AddressMode::Accumulator;
     } else if is_valid_label(arguments, false) {
         addr_mode = AddressMode::Label;
@@ -626,9 +654,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::ADC_ABSOLUTE
                 }
+                AddressMode::LabelX    |
                 AddressMode::AbsoluteX => {
                     ops::ADC_ABSOLUTE_X
                 }
+                AddressMode::LabelY    |
                 AddressMode::AbsoluteY => {
                     ops::ADC_ABSOLUTE_Y
                 }
@@ -656,9 +686,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::AND_ABSOLUTE
                 }
+                AddressMode::LabelX    |
                 AddressMode::AbsoluteX => {
                     ops::AND_ABSOLUTE_X
                 }
+                AddressMode::LabelY    |
                 AddressMode::AbsoluteY => {
                     ops::AND_ABSOLUTE_Y
                 }
@@ -682,10 +714,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX   => {
                     ops::ASL_ZERO_PAGE_X
                 }
-                AddressMode::Label     |
+                AddressMode::Label       |
                 AddressMode::Absolute    => {
                     ops::ASL_ABSOLUTE
                 }
+                AddressMode::LabelX      |
                 AddressMode::AbsoluteX   => {
                     ops::ASL_ABSOLUTE_X
                 }
@@ -724,7 +757,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPage => {
                     ops::BIT_ZERO_PAGE
                 }
-                AddressMode::Label     |
+                AddressMode::Label    |
                 AddressMode::Absolute => {
                     ops::BIT_ABSOLUTE
                 }
@@ -831,9 +864,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::CMP_ABSOLUTE
                 }
+                AddressMode::LabelX    |
                 AddressMode::AbsoluteX => {
                     ops::CMP_ABSOLUTE_X
                 }
+                AddressMode::LabelY    |
                 AddressMode::AbsoluteY => {
                     ops::CMP_ABSOLUTE_Y
                 }
@@ -888,6 +923,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::DEC_ABSOLUTE
                 }
+                AddressMode::LabelX    |
                 AddressMode::AbsoluteX => {
                     ops::DEC_ABSOLUTE_X
                 }
@@ -925,9 +961,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::EOR_ABSOLUTE
                 }
+                AddressMode::LabelX    |
                 AddressMode::AbsoluteX => {
                     ops::EOR_ABSOLUTE_X
                 }
+                AddressMode::LabelY    |
                 AddressMode::AbsoluteY => {
                     ops::EOR_ABSOLUTE_Y
                 }
@@ -952,6 +990,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::INC_ABSOLUTE
                 }
+                AddressMode::LabelX    |
                 AddressMode::AbsoluteX => {
                     ops::INC_ABSOLUTE_X
                 }
@@ -1010,9 +1049,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::LDA_ABSOLUTE
                 }
+                AddressMode::LabelX    |
                 AddressMode::AbsoluteX => {
                     ops::LDA_ABSOLUTE_X
                 }
+                AddressMode::LabelY    |
                 AddressMode::AbsoluteY => {
                     ops::LDA_ABSOLUTE_Y
                 }
@@ -1040,6 +1081,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::LDX_ABSOLUTE
                 }
+                AddressMode::LabelY    |
                 AddressMode::AbsoluteY => {
                     ops::LDX_ABSOLUTE_Y
                 }
@@ -1061,6 +1103,7 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::LDY_ABSOLUTE
                 }
+                AddressMode::LabelX    |
                 AddressMode::AbsoluteX => {
                     ops::LDY_ABSOLUTE_X
                 }
@@ -1078,10 +1121,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX   => {
                     ops::LSR_ZERO_PAGE_X
                 }
-                AddressMode::Label     |
+                AddressMode::Label       |
                 AddressMode::Absolute    => {
                     ops::LSR_ABSOLUTE
                 }
+                AddressMode::LabelX      |
                 AddressMode::AbsoluteX   => {
                     ops::LSR_ABSOLUTE_X
                 }
@@ -1111,9 +1155,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::ORA_ABSOLUTE
                 }
+                AddressMode::LabelX    |
                 AddressMode::AbsoluteX => {
                     ops::ORA_ABSOLUTE_X
                 }
+                AddressMode::LabelY    |
                 AddressMode::AbsoluteY => {
                     ops::ORA_ABSOLUTE_Y
                 }
@@ -1169,10 +1215,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX   => {
                     ops::ROL_ZERO_PAGE_X
                 }
-                AddressMode::Label     |
+                AddressMode::Label       |
                 AddressMode::Absolute    => {
                     ops::ROL_ABSOLUTE
                 }
+                AddressMode::LabelX      |
                 AddressMode::AbsoluteX   => {
                     ops::ROL_ABSOLUTE_X
                 }
@@ -1190,10 +1237,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::ZeroPageX   => {
                     ops::ROR_ZERO_PAGE_X
                 }
-                AddressMode::Label     |
+                AddressMode::Label       |
                 AddressMode::Absolute    => {
                     ops::ROR_ABSOLUTE
                 }
+                AddressMode::LabelX      |
                 AddressMode::AbsoluteX   => {
                     ops::ROR_ABSOLUTE_X
                 }
@@ -1231,9 +1279,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::SBC_ABSOLUTE
                 }
+                AddressMode::LabelX    |
                 AddressMode::AbsoluteX => {
                     ops::SBC_ABSOLUTE_X
                 }
+                AddressMode::LabelY    |
                 AddressMode::AbsoluteY => {
                     ops::SBC_ABSOLUTE_Y
                 }
@@ -1282,9 +1332,11 @@ pub fn name_mode_to_opcode(op: &str, mode: &AddressMode) -> u8 {
                 AddressMode::Absolute  => {
                     ops::STA_ABSOLUTE
                 }
+                AddressMode::LabelX    |
                 AddressMode::AbsoluteX => {
                     ops::STA_ABSOLUTE_X
                 }
+                AddressMode::LabelY    |
                 AddressMode::AbsoluteY => {
                     ops::STA_ABSOLUTE_Y
                 }
@@ -1459,7 +1511,31 @@ pub fn can_use_variables(op: u8) -> bool {
         ops::SBC_ABSOLUTE |
         ops::STA_ABSOLUTE |
         ops::STX_ABSOLUTE |
-        ops::STY_ABSOLUTE => true,
+        ops::STY_ABSOLUTE |
+        ops::ADC_ABSOLUTE_X |
+        ops::AND_ABSOLUTE_X |
+        ops::ASL_ABSOLUTE_X |
+        ops::CMP_ABSOLUTE_X |
+        ops::DEC_ABSOLUTE_X |
+        ops::EOR_ABSOLUTE_X |
+        ops::INC_ABSOLUTE_X |
+        ops::LDA_ABSOLUTE_X |
+        ops::LDY_ABSOLUTE_X |
+        ops::LSR_ABSOLUTE_X |
+        ops::ORA_ABSOLUTE_X |
+        ops::ROL_ABSOLUTE_X |
+        ops::ROR_ABSOLUTE_X |
+        ops::SBC_ABSOLUTE_X |
+        ops::STA_ABSOLUTE_X |
+        ops::ADC_ABSOLUTE_Y |
+        ops::AND_ABSOLUTE_Y |
+        ops::CMP_ABSOLUTE_Y |
+        ops::EOR_ABSOLUTE_Y |
+        ops::LDA_ABSOLUTE_Y |
+        ops::LDX_ABSOLUTE_Y |
+        ops::ORA_ABSOLUTE_Y |
+        ops::SBC_ABSOLUTE_Y |
+        ops::STA_ABSOLUTE_Y => true,
 
         ops::custom::TOS_ABSOLUTE |
         ops::custom::PRT_ABSOLUTE => true,

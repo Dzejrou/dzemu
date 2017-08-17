@@ -10,6 +10,7 @@ use util;
 
 pub struct Assembler6502 {
     data:      Vec<u8>,
+    files:     Vec<String>,
     labels:    HashMap<String, u16>,
     jumps:     HashMap<u16, String>,
     branches:  HashMap<u16, String>,
@@ -22,6 +23,7 @@ impl Assembler6502 {
     pub fn new() -> Assembler6502 {
         Assembler6502 {
             data:     Vec::new(),
+            files:    Vec::new(),
             labels:   HashMap::new(),
             jumps:    HashMap::new(),
             branches: HashMap::new(),
@@ -75,7 +77,6 @@ impl Assembler for Assembler6502 {
                     self.data[(addr + 2) as usize] = util::upper(target);
                 }
                 None => {
-                    println!("{:?}", self.vars);
                     panic!("Variable not defined: {}", var);
                 }
             }
@@ -220,7 +221,12 @@ impl Assembler6502 {
 
             if upper_line.starts_with(".INCLUDE ") {
                 let file = self.get_include_file(&line, input);
-                self.assemble_file(file.to_str().unwrap());
+                let file = String::from(file.to_str().unwrap());
+
+                if !self.files.contains(&file) {
+                    self.files.push(file.clone());
+                    self.assemble_file(&file);
+                }
             } else if upper_line.starts_with(".BYTE ") {
                 // TODO: Special instruction + length before variable
                 //       so that disassembler knows to skip it, maybe only
@@ -263,7 +269,6 @@ impl Assembler6502 {
 
     fn declare_variable(&mut self, line: &str) {
         let words: Vec<&str> = line.split(" ").collect();
-        println!("VAR: {:?}", words);
 
         let count = words.len();
         let mut values: Vec<u8> = Vec::new();
@@ -313,9 +318,11 @@ impl Assembler6502 {
                 self.push_three_byte(op, operand);
             }
 
-            // TODO: LabelX and maybe LabelY!
-            AddressMode::Label       => {
+            AddressMode::Label       |
+            AddressMode::LabelX      |
+            AddressMode::LabelY      => {
                 let mut label = String::from(arg).to_uppercase();
+                label = self.strip_index(&label);
                 label.push_str(":");
 
                 if mcs6502::can_jump_to_label(op) {
@@ -327,11 +334,13 @@ impl Assembler6502 {
                 } else if mcs6502::can_use_variables(op) {
                     self.var_uses.insert(data_end, label);
                     self.push_three_byte(op, 0x0000u16);
+                } else {
+                    panic!("Instruction cannot use label: 0x{:X} {} ({:?})", op, label, mode);
                 }
             }
 
-            AddressMode::None     => {
-                panic!("AddressingMode::None for opcode: {}", op);
+            _                     => {
+                panic!("Invalid address mode {:?} for opcode: {}", mode, op);
             }
         }
     }
@@ -349,5 +358,18 @@ impl Assembler6502 {
         self.data.push(op);
         self.data.push(util::lower(operand));
         self.data.push(util::upper(operand));
+    }
+
+    fn strip_index(&self, label: &str) -> String {
+        let mut chars = label.chars();
+        let mut res = String::new();
+
+        let mut c = chars.next().unwrap_or(' ');
+        while c.is_alphanumeric() || c == '_' {
+            res.push(c);
+            c = chars.next().unwrap_or(' ');
+        }
+
+        res
     }
 }
