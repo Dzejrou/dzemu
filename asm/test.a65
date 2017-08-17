@@ -6,6 +6,8 @@
 .byte hallo $48 $41 $4C $4C $4F $00
 .byte start_addr $20
 
+$string hey_str "hey there"
+
 .macro test_arg _arg1 _arg2
   $test _arg1
   $test _arg2
@@ -16,3 +18,4 @@
 
 start:
 $test_arg hallo hello
+$test hey_str

@@ -481,6 +481,18 @@ impl Preprocessor {
                         }
 
                         self.register_macro(macro_code);
+                    } else if line.starts_with("$PROCEDURE ") {
+                        self.macro_procedure(&line, &mut output);
+                    } else if line.starts_with("$CALL ") {
+                        self.macro_call(&line, &mut output);
+                    } else if line.starts_with("$RET ") {
+                        self.macro_ret(&line, &mut output);
+                    } else if line.starts_with("$PUSH ") {
+                        self.macro_push(&line, &mut output);
+                    } else if line.starts_with("$POP ") {
+                        self.macro_pop(&line, &mut output);
+                    } else if line.starts_with("$STRING ") {
+                        self.macro_string(&line, &mut output);
                     } else if line.starts_with("$") {
                         self.expand_macro(&line, &mut output);
                         expanded = true;
@@ -541,5 +553,95 @@ impl Preprocessor {
 
             }
         }
+    }
+
+    fn macro_procedure(&mut self, line: &str, output: &mut Vec<String>) {
+        let mut tokens = line.split_whitespace();
+
+        // Skip name.
+        tokens.next();
+
+        let arguments: Vec<&str> = tokens.collect();
+        println!("PROCEDURE: {:?}", arguments);
+    }
+
+    fn macro_call(&mut self, line: &str, output: &mut Vec<String>) {
+        let mut tokens = line.split_whitespace();
+
+        // Skip name.
+        tokens.next();
+
+        let arguments: Vec<&str> = tokens.collect();
+        println!("CALL: {:?}", arguments);
+    }
+
+    fn macro_ret(&mut self, line: &str, output: &mut Vec<String>) {
+        let mut tokens = line.split_whitespace();
+
+        // Skip name.
+        tokens.next();
+
+        let arguments: Vec<&str> = tokens.collect();
+        println!("RET: {:?}", arguments);
+    }
+
+    fn macro_push(&mut self, line: &str, output: &mut Vec<String>) {
+        let mut tokens = line.split_whitespace();
+
+        // Skip name.
+        tokens.next();
+
+        let arguments: Vec<&str> = tokens.collect();
+        println!("PUSH: {:?}", arguments);
+    }
+
+    fn macro_pop(&mut self, line: &str, output: &mut Vec<String>) {
+        let mut tokens = line.split_whitespace();
+
+        // Skip name.
+        tokens.next();
+
+        let arguments: Vec<&str> = tokens.collect();
+        println!("POP: {:?}", arguments);
+    }
+
+    fn macro_string(&mut self, line: &str, output: &mut Vec<String>) {
+        let mut tokens = line.split_whitespace();
+
+        // Skip name.
+        tokens.next();
+
+        let arguments: Vec<&str> = tokens.collect();
+
+        let mut string = String::new();
+        string.push_str(arguments[1]);
+
+        if string.find('"') == string.rfind('"') {
+            for i in 2 .. arguments.len() {
+                string.push_str(" ");
+                if arguments[i].contains('"') {
+                    string.push_str(arguments[i].trim_right_matches(|c| c != '"'));
+                    break;
+                } else {
+                    string.push_str(arguments[i]);
+                }
+            }
+        }
+
+        if string.find('"') == string.rfind('"') {
+            panic!("String not misses quotes: {}", string);
+        }
+
+        let mut out_string = String::from(".BYTE ");
+        out_string.push_str(arguments[0]);
+        for c in string.chars() {
+            if c != '"' {
+                out_string.push_str(" $");
+                out_string.push_str(&format!("{:X}", c as u8));
+            }
+        }
+        out_string.push_str(" $00");
+
+        output.push(out_string);
     }
 }
