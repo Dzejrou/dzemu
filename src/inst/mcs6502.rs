@@ -578,11 +578,10 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
             return (mode, 0u16);
         }
     }
+    // TODO: Indirect labels?
 
-    // TODO: Refactor this into a state automaton or something.
-    // TODO: Error reporting.
-    // TODO: Indirect addressing modes.
-    if chars.len() == 1 && chars[0] == 'A' {
+    let size = chars.len();
+    if size == 1 && chars[0] == 'A' {
         addr_mode = AddressMode::Accumulator;
     } else if is_valid_label(arguments, false) {
         addr_mode = AddressMode::Label;
@@ -598,7 +597,7 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
         }
     } else if chars[0] == '*' {
         // Zero page
-        if chars.len() > 2 {
+        if size > 2 {
             let res = extract_operand_u8(&chars, 1);
             match res {
                 Some(num) => {
@@ -609,13 +608,41 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
             }
         }
 
-        if chars[chars.len() - 1] == 'X' {
+        if chars[size - 1] == 'X' {
             addr_mode = AddressMode::ZeroPageX;
-        } else if chars[chars.len() - 1] == 'Y' {
+        } else if chars[size - 1] == 'Y' {
             addr_mode = AddressMode::ZeroPageY;
         }
     } else if chars[0] == '(' {
-        // TODO: Indirect
+        if chars[size - 1] == ')' {
+            if chars[size - 2] == 'X' {
+                addr_mode = AddressMode::IndirectX;
+                chars[size - 3] = ')'; // Overwrite comma.
+            } else {
+                addr_mode = AddressMode::Indirect;
+            }
+        } else if chars[size - 1] == 'Y' {
+            addr_mode = AddressMode::IndirectY;
+        }
+
+        let mut argument: Vec<char> = Vec::new();
+        for i in 1..size - 1 {
+            if chars[i] != ')' {
+                argument.push(chars[i]);
+            } else {
+                break;
+            }
+        }
+
+        if argument.len() > 1 {
+            let res = extract_operand_u8(&argument, 0);
+            match res {
+                Some(num) => {
+                    operand = num;
+                },
+                None => addr_mode = AddressMode::None
+            }
+        }
     } else if chars.len() > 2 {
         // Absolute
         let res = extract_operand_u16(&chars, 0);
@@ -627,9 +654,9 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
             None => ()
         }
 
-        if chars[chars.len() - 1] == 'X' {
+        if chars[size - 1] == 'X' {
             addr_mode = AddressMode::AbsoluteX;
-        } else if chars[chars.len() - 1] == 'Y' {
+        } else if chars[size - 1] == 'Y' {
             addr_mode = AddressMode::AbsoluteY;
         }
     }

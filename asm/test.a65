@@ -3,15 +3,18 @@
 
 .byte loop_count $05
 .byte hello $48 $45 $4C $4C $4F $00
+.byte start_addr $20
 
 start:
 JSR print
+; JMP (start_addr)
 
 ; Indexing on variables not working atm.
-LDA #$4F
-LDY #$01
-STA hello, Y
-PRT hello
+LDY #$06
+LDA ($00), Y
+STA $25
+TOS $25
+PRT $25
 
 ; Calculate _my_var1 * _my_var2.
 LDA #$05
