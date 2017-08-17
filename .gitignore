@@ -6,3 +6,4 @@ tags
 /bin/*
 *.out
 /*.a65
+/asm/test*
