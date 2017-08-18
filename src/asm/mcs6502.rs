@@ -18,7 +18,8 @@ pub struct Assembler6502 {
     branches:  HashMap<u16, String>,
     vars:      HashMap<String, u16>,
     var_uses:  HashMap<u16, String>,
-    prep:      Preprocessor
+    prep:      Preprocessor,
+    debug:     bool
 }
 
 impl Assembler6502 {
@@ -31,7 +32,8 @@ impl Assembler6502 {
             branches: HashMap::new(),
             vars:     HashMap::new(),
             var_uses: HashMap::new(),
-            prep:     Preprocessor::new()
+            prep:     Preprocessor::new(),
+            debug:    false
         }
     }
 }
@@ -59,9 +61,6 @@ impl Assembler for Assembler6502 {
 
         // Skip data section.
         self.translate("JMP END");
-        self.translate("NOP");
-        self.translate("NOP");
-        self.translate("NOP");
 
         for (&addr, var) in self.var_uses.iter() {
             match self.vars.get(var) {
@@ -81,7 +80,6 @@ impl Assembler for Assembler6502 {
         }
 
         self.translate("END:");
-        self.translate("NOP");
 
         for (&addr, label) in self.jumps.iter() {
             match self.labels.get(label) {
@@ -119,14 +117,20 @@ impl Assembler for Assembler6502 {
         writer.write_all(&self.data)
             .expect("Cannot write to output file.");
     }
+
+    fn debug(&mut self, debug: bool) {
+        self.debug = debug;
+    }
 }
 
 impl Assembler6502 {
     pub fn translate(&mut self, command: &str) {
         let data_end = self.data.len() as u16;
+        let mut command = command;
 
+        // Label definition on its own line.
         if mcs6502::is_valid_label(command, true) {
-            let mut label = String::from(command);
+            let mut label = command.to_string();
             if !label.ends_with(":") {
                 label.push_str(":");
             }
@@ -138,63 +142,41 @@ impl Assembler6502 {
             return;
         }
 
-        let cmd_tmp;
-        match command.find(";") {
-            Some(num) => {
-                let (cmd, _) = command.split_at(num);
-                cmd_tmp = String::from(cmd);
-            }
-            None => {
-                cmd_tmp = String::from(command);
-            }
-        }
-
-        let command = cmd_tmp.trim();
-        let mut space_idx;
-
-        let op;
-        let arg;
-
-        if command.len() > 3 {
-            match command.find(" ") {
-                Some(num) => space_idx = num,
-                None => panic!("Malformed command: {}", command)
-            }
-
-            if space_idx != 3 {
-                let (label, rest) = command.split_at(space_idx);
-                let rest = rest.trim();
-
-                let mut label = String::from(label).to_lowercase();
-                assert!(mcs6502::is_valid_label(&label, true), "Invalid label: {}.", label);
-                if !label.ends_with(":") {
-                    label.push_str(":");
-                }
-                match self.labels.insert(label, data_end) {
-                    Some(_) => panic!("Redefinition of label in {}", command),
-                    None    => ()
-                }
-
-                match rest.find(" ") {
-                    Some(num) => space_idx = num,
-                    None => panic!("Malformed command: {}", command)
-                }
-
-                let (op_, arg_) = rest.split_at(space_idx);
-                op = op_;
-                arg = arg_;
-            } else {
-                let (op_, arg_) = command.split_at(space_idx);
-                op = op_;
-                arg = arg_;
-            }
+        let tokens: Vec<&str> = command.split(";").collect();
+        if tokens.len() == 0 || tokens[0] == "" || tokens[0].starts_with(";") {
+            return; // Commented line.
         } else {
-            op = command;
-            arg = "";
+            command = tokens[0];
         }
 
-        let op = op.trim();
-        let arg = arg.trim();
+        let mut tokens: Vec<&str> = command.split_whitespace().collect();
+        assert!(tokens.len() > 0);
+
+        if mcs6502::is_valid_label(tokens[0], true) {
+            let mut label = tokens[0].to_string();
+            if !label.ends_with(":") {
+                label.push_str(":");
+            }
+
+            match self.labels.insert(label, data_end) {
+                Some(_) => panic!("Redefinition of label in {}", command),
+                None    => ()
+            }
+
+            tokens.remove(0);
+        }
+
+        let op = tokens[0];
+
+        let mut arg = if tokens.len() > 1 {
+            tokens[1].to_string()
+        } else {
+            "".to_string()
+        };
+        if tokens.len() > 2 && arg.ends_with(',') {
+            arg.push_str(tokens[2]);
+        }
+
         let (addr_mode, operand) = mcs6502::parse_arguments(&arg);
         let mut addr_mode = addr_mode;
 
@@ -217,13 +199,6 @@ impl Assembler6502 {
 
         lines = self.prep.process(lines);
 
-        // TODO: Remove, used for macro testing.
-        println!("Input after preprocessing:");
-        for line in lines.iter() {
-            println!("{}", line);
-        }
-        println!("");
-
         for line in lines.iter() {
             let line = line.trim();
 
@@ -237,16 +212,10 @@ impl Assembler6502 {
                     self.assemble_file(&file);
                 }
             } else if line.starts_with(".BYTE ") {
-                // TODO: Special instruction + length before variable
-                //       so that disassembler knows to skip it, maybe only
-                //       in debug mode? Even with a name of the variable?
                 self.declare_variable(&line);
             } else if line.starts_with(".WORD ") {
                 // TODO: 16 bit variables, also add 16 bit
                 //       custom instructions!
-            } else if line.starts_with(".STRING ") {
-                // TODO: Add strings? Basically same as .BYTE array, but
-                //       translates chars to bytes.
             } else if !line.is_empty() && !line.starts_with(";") {
                 self.translate(&line);
             }
@@ -278,21 +247,23 @@ impl Assembler6502 {
         let mut values: Vec<u8> = Vec::new();
 
         // Marker for dissasembler.
-        values.push(ops::custom::VARIABLE);
-        values.push((count - 2) as u8);
+        if self.debug {
+            values.push(ops::custom::VARIABLE);
+            values.push((count - 2) as u8);
+        }
 
         // Default value.
         if count == 2 {
             values.push(0x00u8);
-        }
-
-        for i in 2..count {
-            let chars: Vec<char> = words[i].chars().collect();
-            let value = mcs6502::extract_operand_u8(&chars, 0);
-            if let Some(value) = value {
-                values.push(util::lower(value));
-            } else {
-                panic!("Invalid byte initializer: {}", words[i]);
+        } else {
+            for i in 2..count {
+                let chars: Vec<char> = words[i].chars().collect();
+                let value = mcs6502::extract_operand_u8(&chars, 0);
+                if let Some(value) = value {
+                    values.push(util::lower(value));
+                } else {
+                    panic!("Invalid byte initializer: {}", words[i]);
+                }
             }
         }
 
@@ -305,7 +276,6 @@ impl Assembler6502 {
 
         // Variables are where they were declared.
         self.vars.insert(name.clone(), (self.data.len() + 2) as u16);
-
         for value in values.iter() {
             self.data.push(*value);
         }
@@ -472,7 +442,7 @@ impl Preprocessor {
 
         // Auxiliary variables.
         if !self.aux_defined {
-            output.push(String::from(".BYTE __ACCUMULATOR_BACKUP__ $00"));
+            // No aux atm, accu backup was unnecessarily expensive.
             self.aux_defined = true;
         }
 
@@ -592,10 +562,8 @@ impl Preprocessor {
                    arguments.len(), arguments);
         }
 
-        output.push(String::from("STA __ACCUMULATOR_BACKUP__"));
         output.push(format!("LDA {}", arguments[0]));
         output.push(String::from("PHA"));
-        output.push(String::from("LDA __ACCUMULATOR_BACKUP__"));
     }
 
     fn macro_pop(&mut self, line: &str, output: &mut Vec<String>) {
@@ -609,10 +577,8 @@ impl Preprocessor {
                    arguments.len(), arguments);
         }
 
-        output.push(String::from("STA __ACCUMULATOR_BACKUP__"));
         output.push(String::from("PLA"));
         output.push(format!("STA {}", arguments[0]));
-        output.push(String::from("LDA __ACCUMULATOR_BACKUP__"));
     }
 
     fn macro_string(&mut self, line: &str, output: &mut Vec<String>) {
@@ -663,9 +629,7 @@ impl Preprocessor {
             panic!("The $mov macro requires two arguments.")
         }
 
-        output.push(String::from("STA __ACCUMULATOR_BACKUP__"));
         output.push(format!("LDA {}", arguments[1]));
         output.push(format!("STA {}", arguments[0]));
-        output.push(String::from("LDA __ACCUMULATOR_BACKUP__"));
     }
 }

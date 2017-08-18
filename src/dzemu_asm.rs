@@ -11,6 +11,7 @@ fn main() {
     }
 
     let mut asm = Assembler6502::new();
+    asm.debug(true); // Without debug has problems atm.
     asm.assemble(&args[1]);
     asm.link();
     asm.output("test.out");
