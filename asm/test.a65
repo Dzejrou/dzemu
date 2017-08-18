@@ -3,6 +3,9 @@ $string hello "Hello, world!"
 .byte __tmp $00 $00 $00 $00 $00 $00 $00
 .byte __num $00
 
+.word __word $BEEF
+.word __words $DEAD $BEEF
+
 .macro print __var
   $mov __num __var
   JSR print_num

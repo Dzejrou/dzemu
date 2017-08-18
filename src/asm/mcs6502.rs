@@ -212,10 +212,10 @@ impl Assembler6502 {
                     self.assemble_file(&file);
                 }
             } else if line.starts_with(".BYTE ") {
-                self.declare_variable(&line);
+                self.declare_variable(&line, 1);
             } else if line.starts_with(".WORD ") {
-                // TODO: 16 bit variables, also add 16 bit
-                //       custom instructions!
+                // TODO: 16bit instructions?
+                self.declare_variable(&line, 2);
             } else if !line.is_empty() && !line.starts_with(";") {
                 self.translate(&line);
             }
@@ -240,8 +240,13 @@ impl Assembler6502 {
         }
     }
 
-    fn declare_variable(&mut self, line: &str) {
+    fn declare_variable(&mut self, line: &str, bytes: u8) {
+        // TODO: If we declare an array and place ; in the
+        //       middle of the init values, the assembler will
+        //       flip out.
         let words: Vec<&str> = line.split(" ").collect();
+
+        assert!(bytes == 1 || bytes == 2);
 
         let count = words.len();
         let mut values: Vec<u8> = Vec::new();
@@ -249,20 +254,32 @@ impl Assembler6502 {
         // Marker for dissasembler.
         if self.debug {
             values.push(ops::custom::VARIABLE);
-            values.push((count - 2) as u8);
+            values.push(((count - 2) as u8) * bytes);
         }
 
         // Default value.
         if count == 2 {
-            values.push(0x00u8);
+            for _ in 0 .. bytes {
+                values.push(0x00u8);
+            }
         } else {
             for i in 2..count {
                 let chars: Vec<char> = words[i].chars().collect();
-                let value = mcs6502::extract_operand_u8(&chars, 0);
-                if let Some(value) = value {
-                    values.push(util::lower(value));
-                } else {
-                    panic!("Invalid byte initializer: {}", words[i]);
+                if bytes == 1 {
+                    let value = mcs6502::extract_operand_u8(&chars, 0);
+                    if let Some(value) = value {
+                        values.push(util::lower(value));
+                    } else {
+                        panic!("Invalid byte initializer: {}", words[i]);
+                    }
+                } else if bytes == 2{
+                    let value = mcs6502::extract_operand_u16(&chars, 0);
+                    if let Some(value) = value {
+                        values.push(util::lower(value));
+                        values.push(util::upper(value));
+                    } else {
+                        panic!("Invalid word initializer: {}", words[i]);
+                    }
                 }
             }
         }
