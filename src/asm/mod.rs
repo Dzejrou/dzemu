@@ -6,3 +6,17 @@ pub trait Assembler {
     fn output(&mut self, &str);
     fn debug(&mut self, bool);
 }
+
+pub enum VariableSize {
+    Byte,
+    Word
+}
+
+impl VariableSize {
+    pub fn bytes(&self) -> u8 {
+        match *self {
+            VariableSize::Byte => 1,
+            VariableSize::Word => 2,
+        }
+    }
+}
