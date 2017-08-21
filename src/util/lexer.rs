@@ -1,7 +1,9 @@
+#[derive(Debug, PartialEq)]
 pub enum Token {
     Number(u32)
 }
 
+#[derive(Debug)]
 pub enum TokenRule {
     Number(u8)
 }
@@ -9,7 +11,7 @@ pub enum TokenRule {
 impl TokenRule {
     pub fn is_valid_char(&self, c: char) -> bool {
         match *self {
-            TokenRule::Number(base) => c.is_digit(base as u32)
+            TokenRule::Number(radix) => c.is_digit(radix as u32)
         }
     }
 
@@ -25,12 +27,12 @@ impl TokenRule {
 
     pub fn parse(&self, token_str: &str) -> Option<Token> {
         match *self {
-            TokenRule::Number(_) => {
+            TokenRule::Number(radix) => {
                 if !self.is_valid_str(token_str) {
                     None
                 } else {
-                    let res = token_str.parse()
-                        .expect(&format!("Not a number: {}", token_str));
+                    let res = u32::from_str_radix(token_str, radix as u32)
+                        .unwrap();
 
                     Some(Token::Number(res))
                 }
@@ -46,7 +48,9 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(data: &str) -> Lexer {
-        let data: Vec<char> = data.chars().collect();
+        // TODO: Is whitespace needed?
+        let data: Vec<char> = data.chars()
+            .filter(|c| !c.is_whitespace()).collect();
 
         Lexer {
             chars: data,
@@ -54,12 +58,16 @@ impl Lexer {
         }
     }
 
-    fn next_char(&mut self) -> Option<char> {
+    pub fn next_char(&mut self) -> Option<char> {
         if self.idx < self.chars.len() {
             Some(self.chars[self.idx])
         } else {
             None
         }
+    }
+
+    pub fn skip(&mut self, count: usize) {
+        self.idx = self.idx.wrapping_add(count);
     }
 
     pub fn next_str(&mut self, rule: &TokenRule) -> Option<String> {
@@ -92,9 +100,25 @@ impl Lexer {
 
 #[cfg(test)]
 mod test {
+    use super::Token;
     use super::TokenRule;
     use super::Lexer;
 
+    #[test]
+    fn next_char() {
+        let mut lexer = Lexer::new("ACBD");
+
+        assert_eq!(lexer.next_char(), Some('A'));
+
+        lexer.skip(1);
+        assert_eq!(lexer.next_char(), Some('C'));
+
+        lexer.skip(2);
+        assert_eq!(lexer.next_char(), Some('D'));
+
+        lexer.skip(1);
+        assert_eq!(lexer.next_char(), None);
+    }
     #[test]
     fn next_str_dec() {
         let mut lexer = Lexer::new("1337 A3B0");
@@ -120,5 +144,20 @@ mod test {
 
         assert_eq!(lexer.next_str(&rule), Some("101".to_string()));
         assert_eq!(lexer.next_str(&rule), None);
+    }
+
+    #[test]
+    fn next_token_num() {
+        let mut lexer = Lexer::new("0101 1234 ABCD");
+
+        lexer.skip(4);
+        // let rule_bin = TokenRule::Number(2);
+        // assert_eq!(lexer.next_token(&rule_bin), Some(Token::Number(0b101)));
+
+        let rule_dec = TokenRule::Number(10);
+        assert_eq!(lexer.next_token(&rule_dec), Some(Token::Number(1234)));
+
+        let rule_hex = TokenRule::Number(16);
+        assert_eq!(lexer.next_token(&rule_hex), Some(Token::Number(0xABCD)));
     }
 }
