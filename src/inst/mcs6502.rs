@@ -550,7 +550,7 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
 
         let chars = util::extract_indirect_target(&chars);
         let argument: String = chars.into_iter().collect();
-        if is_valid_label(&argument, false) {
+        if is_valid_identifier(&argument, false) {
             return (addr_mode, 0u16);
         }
     }
@@ -572,7 +572,7 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
         }
 
         let label: String = chars.into_iter().collect();
-        if is_valid_label(&label, false) {
+        if is_valid_identifier(&label, false) {
             return (mode, 0u16);
         }
     }
@@ -580,7 +580,7 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
     let size = chars.len();
     if size == 1 && chars[0] == 'A' {
         addr_mode = AddressMode::Accumulator;
-    } else if is_valid_label(arguments, false) {
+    } else if is_valid_identifier(arguments, false) {
         addr_mode = AddressMode::Label;
     } else if chars[0] == '#' {
         // Implied
@@ -1508,8 +1508,8 @@ pub fn is_valid_instruction(op: &str) -> bool {
     }
 }
 
-pub fn is_valid_label(label: &str, decl: bool) -> bool {
-    !is_valid_instruction(label) && util::is_valid_label(label, decl)
+pub fn is_valid_identifier(ident: &str, decl: bool) -> bool {
+    !is_valid_instruction(ident) && util::is_valid_identifier(ident, decl)
 }
 
 pub fn can_jump_to_label(op: u8) -> bool {

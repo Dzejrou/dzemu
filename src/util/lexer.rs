@@ -36,7 +36,7 @@ impl TokenRule {
             }
             TokenRule::Identifier => {
                 // TODO: Rename that to is_valid_identifier!
-                util::is_valid_label(string, false)
+                util::is_valid_identifier(string, false)
             }
             _                     => {
                 for c in string.chars() {

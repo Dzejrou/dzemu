@@ -65,12 +65,12 @@ pub fn to_u16(hi: u8, lo: u8) -> u16 {
     (hi << 8) | lo
 }
 
-fn is_valid_label_char(c: char) -> bool {
+fn is_valid_identifier_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 
 }
 
-pub fn is_valid_label(label: &str, decl: bool) -> bool {
+pub fn is_valid_identifier(label: &str, decl: bool) -> bool {
     let chars: Vec<char> = label.chars().collect();
     let len = chars.len();
 
@@ -79,15 +79,15 @@ pub fn is_valid_label(label: &str, decl: bool) -> bool {
     }
 
     for i in 1..len - 2 {
-        if !is_valid_label_char(chars[i]) {
+        if !is_valid_identifier_char(chars[i]) {
             return false;
         }
     }
 
     // Labels can optionally end with colon when declared.
     if decl {
-        chars[len - 1] == ':' || is_valid_label_char(chars[len - 1])
+        chars[len - 1] == ':' || is_valid_identifier_char(chars[len - 1])
     } else {
-        is_valid_label_char(chars[len - 1])
+        is_valid_identifier_char(chars[len - 1])
     }
 }

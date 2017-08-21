@@ -130,7 +130,7 @@ impl Assembler6502 {
         let mut command = command;
 
         // Label definition on its own line.
-        if mcs6502::is_valid_label(command, true) {
+        if mcs6502::is_valid_identifier(command, true) {
             let mut label = command.to_string();
             if !label.ends_with(":") {
                 label.push_str(":");
@@ -153,7 +153,7 @@ impl Assembler6502 {
         let mut tokens: Vec<&str> = command.split_whitespace().collect();
         assert!(tokens.len() > 0);
 
-        if mcs6502::is_valid_label(tokens[0], true) {
+        if mcs6502::is_valid_identifier(tokens[0], true) {
             let mut label = tokens[0].to_string();
             if !label.ends_with(":") {
                 label.push_str(":");
@@ -286,7 +286,7 @@ impl Assembler6502 {
             }
         }
 
-        if !mcs6502::is_valid_label(words[1], false) {
+        if !mcs6502::is_valid_identifier(words[1], false) {
             panic!("Invalid variable name: '{}'", words[1]);
         }
 
