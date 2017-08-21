@@ -1,5 +1,8 @@
 use mems::Memory;
 use util;
+use util::lexer::Lexer;
+use util::lexer::Token;
+use util::lexer::TokenRule;
 
 // TODO: Add Implied to Mcs6502 emulator.
 #[derive(Debug, PartialEq)]
@@ -496,64 +499,27 @@ pub mod ops {
     }
 }
 
-pub fn extract_operand_u8(chars: &[char], off: u8) -> Option<u16> {
-    let mut off = off as usize;
+pub fn extract_operand(chars: &[char]) -> Option<u16> {
+    let string: String = chars.into_iter().collect();
 
-    let base;
-    if chars.len() >= off + 3 && chars[off] == '$' {
-        off += 1;
-        base = 16;
-    } else if chars.len() >= off + 2 {
-        base = 10;
+    let mut lexer = Lexer::new(&string);
+    lexer.skip_while(&char::is_whitespace);
+    lexer.skip_while(&|c| c == '#' || c == '*');
+    lexer.skip_while(&char::is_whitespace);
+
+    let rule;
+    if lexer.test_eq('$') {
+        rule = TokenRule::Number(16);
+        lexer.skip(1);
     } else {
-        return None;
+        rule = TokenRule::Number(10);
     }
 
-    let digit1 = chars[off] as u8;
-    let digit2 = chars[off + 1] as u8;
-    util::u16_to_number(util::to_u16(digit1, digit2), base)
-}
-
-pub fn extract_operand_u16(chars: &[char], off: u8) -> Option<u16> {
-    let mut off = off as usize;
-    let base;
-
-    if chars.len() >= off + 5 && chars[off] == '$' {
-        off += 1;
-        base = 16;
-    } else if chars.len() >= off + 4 {
-        base = 10
-    } else if chars.len() >= off + 2 {
-        return extract_operand_u8(chars, off as u8);
+    let res = lexer.next_token(&rule);
+    if let Some(Token::Number(num)) = res {
+        Some(num as u16)
     } else {
-        return None;
-    }
-
-    let digit1 = chars[off] as u8;
-    let digit2 = chars[off + 1] as u8;
-    let res1 = util::u16_to_number(util::to_u16(digit1, digit2), base);
-
-    let digit1 = chars[off + 2] as u8;
-    let digit2 = chars[off + 3] as u8;
-    let res2 = util::u16_to_number(util::to_u16(digit1, digit2), base);
-
-    let lower: u16;
-    let upper: u16;
-
-    match res1 {
-        Some(num) => upper = num,
-        None => return None
-    }
-
-    match res2 {
-        Some(num) => lower = num,
-        None => return None
-    }
-
-    if base == 16 {
-        Some((upper << 8) + lower)
-    } else {
-        Some((upper * 100) + lower)
+        None
     }
 }
 
@@ -618,7 +584,7 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
         addr_mode = AddressMode::Label;
     } else if chars[0] == '#' {
         // Implied
-        let res = extract_operand_u8(&chars, 1);
+        let res = extract_operand(&chars);
         match res {
             Some(num) => {
                 addr_mode = AddressMode::Immediate;
@@ -629,7 +595,7 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
     } else if chars[0] == '*' {
         // Zero page
         if size > 2 {
-            let res = extract_operand_u8(&chars, 1);
+            let res = extract_operand(&chars);
             match res {
                 Some(num) => {
                     addr_mode = AddressMode::ZeroPage;
@@ -658,7 +624,7 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
 
         let argument = util::extract_indirect_target(&chars);
         if argument.len() > 1 {
-            let res = extract_operand_u8(&argument, 0);
+            let res = extract_operand(&argument);
             match res {
                 Some(num) => {
                     operand = num;
@@ -668,7 +634,7 @@ pub fn parse_arguments(arguments: &str) -> (AddressMode, u16) {
         }
     } else if chars.len() > 2 {
         // Absolute
-        let res = extract_operand_u16(&chars, 0);
+        let res = extract_operand(&chars);
         match res {
             Some(num) => {
                 addr_mode = AddressMode::Absolute;
@@ -1983,7 +1949,8 @@ pub mod tests {
     #[test]
     fn argument_parsing_absolute() {
         let args_good1 = String::from("$12A3");
-        let args_good2 = String::from("4321"); // TODO: Max 64k?
+        let args_good2 = String::from("4321");
+        let args_good3 = String::from("54321");
         let args_x = String::from("$32C9, X");
         let args_y = String::from("1017, Y");
 
@@ -1994,6 +1961,10 @@ pub mod tests {
         let (addr_mode, operand) = parse_arguments(&args_good2);
         assert_eq!(addr_mode, AddressMode::Absolute);
         assert_eq!(operand, 4321);
+
+        let (addr_mode, operand) = parse_arguments(&args_good3);
+        assert_eq!(addr_mode, AddressMode::Absolute);
+        assert_eq!(operand, 54321);
 
         let (addr_mode, operand) = parse_arguments(&args_x);
         assert_eq!(addr_mode, AddressMode::AbsoluteX);

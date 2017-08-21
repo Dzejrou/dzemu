@@ -266,7 +266,7 @@ impl Assembler6502 {
                 let chars: Vec<char> = words[i].chars().collect();
                 match size {
                     VariableSize::Byte => {
-                        let value = mcs6502::extract_operand_u8(&chars, 0);
+                        let value = mcs6502::extract_operand(&chars);
                         if let Some(value) = value {
                             values.push(util::lower(value));
                         } else {
@@ -274,7 +274,7 @@ impl Assembler6502 {
                         }
                     }
                     VariableSize::Word => {
-                        let value = mcs6502::extract_operand_u16(&chars, 0);
+                        let value = mcs6502::extract_operand(&chars);
                         if let Some(value) = value {
                             values.push(util::lower(value));
                             values.push(util::upper(value));

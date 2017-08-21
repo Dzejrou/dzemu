@@ -97,11 +97,15 @@ impl Lexer {
     }
 
     pub fn next_char(&mut self) -> Option<char> {
-        if self.idx < self.chars.len() {
+        if self.valid_idx() {
             Some(self.chars[self.idx])
         } else {
             None
         }
+    }
+
+    fn valid_idx(&self) -> bool {
+        self.idx < self.chars.len()
     }
 
     pub fn skip(&mut self, count: usize) {
@@ -109,14 +113,40 @@ impl Lexer {
     }
 
     pub fn skip_if(&mut self, func: &Fn(char) -> bool) {
-        if self.idx < self.chars.len() && func(self.chars[self.idx]) {
+        if self.valid_idx() && func(self.chars[self.idx]) {
             self.idx = self.idx.wrapping_add(1);
         }
     }
 
     pub fn skip_while(&mut self, func: &Fn(char) -> bool) {
-        while self.idx < self.chars.len() && func(self.chars[self.idx]) {
+        while self.valid_idx() && func(self.chars[self.idx]) {
             self.idx = self.idx.wrapping_add(1);
+        }
+    }
+
+    pub fn test(&self, func: &Fn(char) -> bool) -> bool {
+        if self.valid_idx() {
+            func(self.chars[self.idx])
+        } else {
+            false
+        }
+    }
+
+    pub fn test_eq(&self, c: char) -> bool {
+        if self.valid_idx() {
+            self.chars[self.idx] == c
+        } else {
+            false
+        }
+    }
+
+    pub fn peek(&self, off: usize) -> Option<char> {
+        let idx = self.idx.wrapping_add(off);
+
+        if idx < self.chars.len() {
+            Some(self.chars[idx])
+        } else {
+            None
         }
     }
 
@@ -214,7 +244,7 @@ mod test {
 
     #[test]
     fn skip() {
-        let mut lexer = Lexer::new("ABCDEFGHIJ");
+        let mut lexer = Lexer::new("ABCDEF");
 
         lexer.skip(2);
         assert_eq!(lexer.idx, 2);
@@ -227,6 +257,26 @@ mod test {
 
         lexer.skip_while(&|c| c == 'D' || c == 'E');
         assert_eq!(lexer.idx, 5);
+
+        lexer.skip(1);
+        assert_eq!(lexer.idx, 6);
+    }
+
+    #[test]
+    fn test() {
+        let lexer = Lexer::new("A");
+
+        assert!(lexer.test(&|c| c == 'A'));
+        assert!(!lexer.test(&|_| false));
+        assert!(lexer.test_eq('A'))
+    }
+
+    #[test]
+    fn peek() {
+        let lexer = Lexer::new("ABCD");
+
+        assert_eq!(lexer.peek(3), Some('D'));
+        assert_eq!(lexer.peek(4), None);
     }
 
     #[test]
