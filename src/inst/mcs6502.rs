@@ -3,6 +3,7 @@ use util;
 use lang::lexer::Lexer;
 use lang::token::Token;
 use lang::token::TokenRule;
+use lang::token::rules::UInt;
 
 // TODO: Add Implied to Mcs6502 emulator.
 #[derive(Debug, PartialEq)]
@@ -509,14 +510,14 @@ pub fn extract_operand(chars: &[char]) -> Option<u16> {
 
     let rule;
     if lexer.test_eq('$') {
-        rule = TokenRule::Number(16);
+        rule = UInt::new(16);
         lexer.skip(1);
     } else {
-        rule = TokenRule::Number(10);
+        rule = UInt::new(10);
     }
 
-    let res = lexer.next_token(&rule);
-    if let Some(Token::Number(num)) = res {
+    let res = lexer.next(rule);
+    if let Some(Token::UInt(num)) = res {
         Some(num as u16)
     } else {
         None

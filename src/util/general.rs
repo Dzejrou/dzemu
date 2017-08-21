@@ -65,12 +65,16 @@ pub fn to_u16(hi: u8, lo: u8) -> u16 {
     (hi << 8) | lo
 }
 
-fn is_valid_identifier_char(c: char) -> bool {
+pub fn is_valid_identifier_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 
 }
 
 pub fn is_valid_identifier(label: &str, decl: bool) -> bool {
+    if label == "" {
+        return false;
+    }
+
     let chars: Vec<char> = label.chars().collect();
     let len = chars.len();
 

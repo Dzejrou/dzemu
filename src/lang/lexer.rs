@@ -1,5 +1,6 @@
 use lang::token::Token;
 use lang::token::TokenRule;
+use lang::token::rules::*;
 
 pub struct Lexer {
     chars: Vec<char>,
@@ -75,39 +76,26 @@ impl Lexer {
         }
     }
 
-    pub fn next_str(&mut self, rule: &TokenRule) -> Option<String> {
-        let mut res = String::new();
-
+    pub fn next(&mut self, mut rule: Box<TokenRule>) -> Option<Token> {
+        let idx_bck = self.idx;
         while let Some(c) = self.next_char() {
-            if rule.is_valid_char(c) {
-                res.push(self.chars[self.idx]);
+            if rule.push(c) {
                 self.idx += 1;
             } else {
                 break;
             }
         }
 
-        if !res.is_empty() {
-            Some(res)
-        } else {
-            None
-        }
-    }
-
-    pub fn next_token(&mut self, rule: &TokenRule) -> Option<Token> {
-        if let Some(token_str) = self.next_str(rule) {
-            rule.parse(&token_str)
-        } else {
-            None
-        }
+        rule.get()
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::Token;
-    use super::TokenRule;
-    use super::Lexer;
+    use lang::token::Token;
+    use lang::token::TokenRule;
+    use lang::token::rules::*;
+    use lang::lexer::Lexer;
 
     #[test]
     fn next_char() {
@@ -124,47 +112,21 @@ mod test {
         lexer.skip(1);
         assert_eq!(lexer.next_char(), None);
     }
-    #[test]
-    fn next_str_dec() {
-        let mut lexer = Lexer::new("1337 A3B0");
-        let rule = TokenRule::Number(10);
-
-        assert_eq!(lexer.next_str(&rule), Some("1337".to_string()));
-        assert_eq!(lexer.next_str(&rule), None);
-    }
 
     #[test]
-    fn next_str_hexa() {
-        let mut lexer = Lexer::new("A3B0 hello");
-        let rule = TokenRule::Number(16);
-
-        assert_eq!(lexer.next_str(&rule), Some("A3B0".to_string()));
-        assert_eq!(lexer.next_str(&rule), None);
-    }
-
-    #[test]
-    fn next_str_bin() {
-        let mut lexer = Lexer::new("10123A");
-        let rule = TokenRule::Number(2);
-
-        assert_eq!(lexer.next_str(&rule), Some("101".to_string()));
-        assert_eq!(lexer.next_str(&rule), None);
-    }
-
-    #[test]
-    fn next_token_num() {
+    fn next_uint() {
         let mut lexer = Lexer::new("  101  1234     ABCD");
 
-        let rule_bin = TokenRule::Number(2);
-        assert_eq!(lexer.next_token(&rule_bin), Some(Token::Number(0b101)));
+        let rule_bin = UInt::new(2);
+        assert_eq!(lexer.next(rule_bin), Some(Token::UInt(0b101)));
         lexer.skip(1);
 
-        let rule_dec = TokenRule::Number(10);
-        assert_eq!(lexer.next_token(&rule_dec), Some(Token::Number(1234)));
+        let rule_dec = UInt::new(10);
+        assert_eq!(lexer.next(rule_dec), Some(Token::UInt(1234)));
         lexer.skip(1);
 
-        let rule_hex = TokenRule::Number(16);
-        assert_eq!(lexer.next_token(&rule_hex), Some(Token::Number(0xABCD)));
+        let rule_hex = UInt::new(16);
+        assert_eq!(lexer.next(rule_hex), Some(Token::UInt(0xABCD)));
     }
 
     #[test]
@@ -207,16 +169,17 @@ mod test {
     #[test]
     fn tokens() {
         let mut lexer = Lexer::new("def foo");
-        let rule_def = TokenRule::Def;
-        let rule_id = TokenRule::Identifier;
+        let rule_fn = FnDecl::new();
+        let rule_id = Identifier::new();
 
-        assert_eq!(lexer.next_token(&rule_def), Some(Token::Def));
+        assert_eq!(lexer.next(rule_fn), Some(Token::FnDecl));
 
         lexer.skip(1);
-        assert_eq!(lexer.next_token(&rule_id),
+        assert_eq!(lexer.next(rule_id),
                    Some(Token::Identifier("foo".to_string())));
 
         lexer.skip(1);
-        assert_eq!(lexer.next_token(&rule_def), None);
+        let rule_fn = FnDecl::new();
+        assert_eq!(lexer.next(rule_fn), None);
     }
 }
