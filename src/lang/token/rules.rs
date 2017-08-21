@@ -4,6 +4,7 @@ use lang::token::TokenRule;
 
 const BUFFER_CAPACITY: usize = 20;
 
+#[derive(Debug)]
 pub struct FnDecl {
     buffer: String
 }
@@ -64,6 +65,7 @@ impl TokenRule for FnDecl {
     }
 }
 
+#[derive(Debug)]
 pub struct Identifier {
     buffer: String
 }
@@ -103,6 +105,7 @@ impl TokenRule for Identifier {
     }
 }
 
+#[derive(Debug)]
 pub struct UInt {
     buffer: String,
     radix:  u32

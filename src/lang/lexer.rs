@@ -3,8 +3,10 @@ use lang::token::TokenRule;
 use lang::token::rules::*;
 
 pub struct Lexer {
-    chars: Vec<char>,
-    idx:   usize
+    chars:  Vec<char>,
+    rules:  Vec<Box<TokenRule>>,
+    tokens: Vec<Token>,
+    idx:    usize
 }
 
 impl Lexer {
@@ -17,8 +19,60 @@ impl Lexer {
             .collect();
 
         Lexer {
-            chars: data,
-            idx:   0
+            chars:  data,
+            rules:  Vec::new(),
+            tokens: Vec::new(),
+            idx:    0
+        }
+    }
+
+    pub fn add_rule(&mut self, rule: Box<TokenRule>) -> &mut Lexer{
+        self.rules.push(rule);
+        self
+    }
+
+    pub fn add_str(&mut self, string: &str) {
+        self.chars.append(&mut string.chars().collect());
+    }
+
+    pub fn tokenize(&mut self) {
+        let len = self.chars.len();
+        let mut token_found = false;
+
+        while self.idx < len {
+            let c = self.chars[self.idx];
+            for rule in self.rules.iter_mut() {
+                if !rule.push(c) {
+                    // First invalid char.
+                    if let Some(token) = rule.get() {
+                        println!("GOT TOKEN: {:?}", token);
+                        token_found = true;
+                        self.tokens.push(token);
+                        break;
+                    } else {
+                        println!("MISMATCH: {}", c);
+                        rule.clear();
+                    }
+                }
+            }
+
+            if token_found {
+                for rule in self.rules.iter_mut() {
+                    rule.clear();
+                }
+
+                //self.skip_while(&char::is_whitespace);
+                token_found = false;
+            }
+
+            self.idx = self.idx.wrapping_add(1);
+        }
+
+        // In case of leftovers.
+        for rule in self.rules.iter_mut() {
+            if rule.valid() {
+                self.tokens.push(rule.get().unwrap());
+            }
         }
     }
 
@@ -86,7 +140,12 @@ impl Lexer {
             }
         }
 
-        rule.get()
+        if rule.valid() {
+            rule.get()
+        } else {
+            self.idx = idx_bck;
+            None
+        }
     }
 }
 
@@ -181,5 +240,21 @@ mod test {
         lexer.skip(1);
         let rule_fn = FnDecl::new();
         assert_eq!(lexer.next(rule_fn), None);
+    }
+
+    #[test]
+    fn tokenize() {
+        let mut lexer = Lexer::new("def foo 123");
+        lexer.add_rule(FnDecl::new())
+             .add_rule(Identifier::new())
+             .add_rule(UInt::new(10));
+
+        // TODO: This is a problem, picks up ff etc.
+        // .add_rule(UInt::new(16));
+        lexer.tokenize();
+
+        let target = vec![Token::FnDecl, Token::Identifier("foo".to_string()), Token::UInt(123)];
+
+        assert_eq!(lexer.tokens, target);
     }
 }
