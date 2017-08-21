@@ -108,6 +108,18 @@ impl Lexer {
         self.idx = self.idx.wrapping_add(count);
     }
 
+    pub fn skip_if(&mut self, func: &Fn(char) -> bool) {
+        if self.idx < self.chars.len() && func(self.chars[self.idx]) {
+            self.idx = self.idx.wrapping_add(1);
+        }
+    }
+
+    pub fn skip_while(&mut self, func: &Fn(char) -> bool) {
+        while self.idx < self.chars.len() && func(self.chars[self.idx]) {
+            self.idx = self.idx.wrapping_add(1);
+        }
+    }
+
     pub fn next_str(&mut self, rule: &TokenRule) -> Option<String> {
         let mut res = String::new();
 
@@ -198,6 +210,23 @@ mod test {
 
         let rule_hex = TokenRule::Number(16);
         assert_eq!(lexer.next_token(&rule_hex), Some(Token::Number(0xABCD)));
+    }
+
+    #[test]
+    fn skip() {
+        let mut lexer = Lexer::new("ABCDEFGHIJ");
+
+        lexer.skip(2);
+        assert_eq!(lexer.idx, 2);
+
+        lexer.skip_if(&|c| c.is_numeric());
+        assert_eq!(lexer.idx, 2);
+
+        lexer.skip_if(&|c| c.is_alphanumeric());
+        assert_eq!(lexer.idx, 3);
+
+        lexer.skip_while(&|c| c == 'D' || c == 'E');
+        assert_eq!(lexer.idx, 5);
     }
 
     #[test]
