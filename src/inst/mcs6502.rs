@@ -1,8 +1,8 @@
 use mems::Memory;
 use util;
-use util::lexer::Lexer;
-use util::lexer::Token;
-use util::lexer::TokenRule;
+use lang::lexer::Lexer;
+use lang::token::Token;
+use lang::token::TokenRule;
 
 // TODO: Add Implied to Mcs6502 emulator.
 #[derive(Debug, PartialEq)]
