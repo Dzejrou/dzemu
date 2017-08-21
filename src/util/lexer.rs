@@ -1,42 +1,77 @@
+use util;
+
 #[derive(Debug, PartialEq)]
 pub enum Token {
+    Def,
+    Identifier(String),
     Number(u32)
 }
 
 #[derive(Debug)]
 pub enum TokenRule {
+    Def,
+    Identifier,
     Number(u8)
 }
 
 impl TokenRule {
     pub fn is_valid_char(&self, c: char) -> bool {
         match *self {
-            TokenRule::Number(radix) => c.is_digit(radix as u32)
+            TokenRule::Def           => {
+                c == 'd' || c == 'e' || c == 'f'
+            }
+            TokenRule::Identifier    => {
+                c.is_alphanumeric() || c == '_'
+            }
+            TokenRule::Number(radix) => {
+                c.is_digit(radix as u32)
+            }
         }
     }
 
     pub fn is_valid_str(&self, string: &str) -> bool {
-        for c in string.chars() {
-            if !self.is_valid_char(c) {
-                return false;
+        match *self {
+            TokenRule::Def        => {
+                string.to_lowercase() == "def"
+            }
+            TokenRule::Identifier => {
+                // TODO: Rename that to is_valid_identifier!
+                util::is_valid_label(string, false)
+            }
+            _                     => {
+                for c in string.chars() {
+                    if !self.is_valid_char(c) {
+                        return false;
+                    }
+                }
+
+                true
             }
         }
-
-        true
     }
 
-    pub fn parse(&self, token_str: &str) -> Option<Token> {
+    fn parse_validated(&self, token: &str) -> Token {
         match *self {
             TokenRule::Number(radix) => {
-                if !self.is_valid_str(token_str) {
-                    None
-                } else {
-                    let res = u32::from_str_radix(token_str, radix as u32)
+                    let res = u32::from_str_radix(token, radix as u32)
                         .unwrap();
 
-                    Some(Token::Number(res))
-                }
+                    Token::Number(res)
             }
+            TokenRule::Def           => {
+                Token::Def
+            }
+            TokenRule::Identifier    => {
+                Token::Identifier(token.to_string())
+            }
+        }
+    }
+
+    pub fn parse(&self, token: &str) -> Option<Token> {
+        if self.is_valid_str(token) {
+            Some(self.parse_validated(token))
+        } else {
+            None
         }
     }
 }
@@ -54,8 +89,6 @@ impl Lexer {
             .join(" ")
             .chars()
             .collect();
-
-        println!("{:?}", data);
 
         Lexer {
             chars: data,
@@ -165,5 +198,21 @@ mod test {
 
         let rule_hex = TokenRule::Number(16);
         assert_eq!(lexer.next_token(&rule_hex), Some(Token::Number(0xABCD)));
+    }
+
+    #[test]
+    fn tokens() {
+        let mut lexer = Lexer::new("def foo");
+        let rule_def = TokenRule::Def;
+        let rule_id = TokenRule::Identifier;
+
+        assert_eq!(lexer.next_token(&rule_def), Some(Token::Def));
+
+        lexer.skip(1);
+        assert_eq!(lexer.next_token(&rule_id),
+                   Some(Token::Identifier("foo".to_string())));
+
+        lexer.skip(1);
+        assert_eq!(lexer.next_token(&rule_def), None);
     }
 }
