@@ -48,9 +48,14 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(data: &str) -> Lexer {
-        // TODO: Is whitespace needed?
-        let data: Vec<char> = data.chars()
-            .filter(|c| !c.is_whitespace()).collect();
+        let data: Vec<char> = data
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .chars()
+            .collect();
+
+        println!("{:?}", data);
 
         Lexer {
             chars: data,
@@ -148,14 +153,15 @@ mod test {
 
     #[test]
     fn next_token_num() {
-        let mut lexer = Lexer::new("0101 1234 ABCD");
+        let mut lexer = Lexer::new("  101  1234     ABCD");
 
-        lexer.skip(4);
-        // let rule_bin = TokenRule::Number(2);
-        // assert_eq!(lexer.next_token(&rule_bin), Some(Token::Number(0b101)));
+        let rule_bin = TokenRule::Number(2);
+        assert_eq!(lexer.next_token(&rule_bin), Some(Token::Number(0b101)));
+        lexer.skip(1);
 
         let rule_dec = TokenRule::Number(10);
         assert_eq!(lexer.next_token(&rule_dec), Some(Token::Number(1234)));
+        lexer.skip(1);
 
         let rule_hex = TokenRule::Number(16);
         assert_eq!(lexer.next_token(&rule_hex), Some(Token::Number(0xABCD)));
