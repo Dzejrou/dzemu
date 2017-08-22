@@ -30,7 +30,6 @@ impl TokenRule for Keyword {
         if self.buffer.len() < self.chars.len() {
             if c == self.chars[self.buffer.len()] {
                 self.buffer.push(c);
-                self.chars.push(c);
                 true
             } else {
                 false
