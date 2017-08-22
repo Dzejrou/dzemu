@@ -2,8 +2,17 @@ pub mod rules;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
+    Dot,
+    End,
+    For,
     FnDecl,
     Identifier(String),
+    LParen,
+    NewLine,
+    OpPlus,
+    RParen,
+    Return,
+    While,
     UInt(u32)
 }
 

@@ -13,12 +13,12 @@ pub struct Keyword {
 }
 
 impl Keyword {
-    pub fn new(keyword: String, token: Token) -> Box<TokenRule> {
+    pub fn new(keyword: &str, token: Token) -> Box<TokenRule> {
         let chars: Vec<char> = keyword.chars().collect();
 
         Box::new(Keyword {
             buffer: String::with_capacity(BUFFER_CAPACITY),
-            keyword,
+            keyword: keyword.to_string(),
             token,
             chars
         })

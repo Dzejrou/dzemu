@@ -65,9 +65,9 @@ impl Lexer {
 
                 //self.skip_while(&char::is_whitespace);
                 token_found = false;
+            } else {
+                self.idx = self.idx.wrapping_add(1);
             }
-
-            self.idx = self.idx.wrapping_add(1);
         }
 
         // In case of leftovers.
@@ -230,7 +230,7 @@ mod test {
     #[test]
     fn tokens() {
         let mut lexer = Lexer::new("def foo");
-        let rule_fn = Keyword::new("def".to_string(), Token::FnDecl);
+        let rule_fn = Keyword::new("def", Token::FnDecl);
         let rule_id = Identifier::new(vec!["def".to_string()]);
 
         assert_eq!(lexer.next(rule_fn), Some(Token::FnDecl));
@@ -240,25 +240,52 @@ mod test {
                    Some(Token::Identifier("foo".to_string())));
 
         lexer.skip(1);
-        let rule_fn = Keyword::new("def".to_string(), Token::FnDecl);
+        let rule_fn = Keyword::new("def", Token::FnDecl);
         assert_eq!(lexer.next(rule_fn), None);
     }
 
     #[test]
     fn tokenize() {
-        let mut lexer = Lexer::new("def foo 123");
-        let keywords: Vec<String> = vec!["def".to_string()];
+        let mut lexer = Lexer::new("");
+        lexer.add_str("def foo(parameter)\n");
+        lexer.add_str("    return parameter + 3\n");
+        lexer.add_str("end\n");
+
+        let keywords: Vec<String> = vec![
+            "def".to_string(), "return".to_string(),
+            "end".to_string()
+        ];
 
         lexer.add_rule(Identifier::new(keywords))
-             .add_rule(Keyword::new("def".to_string(), Token::FnDecl))
-             .add_rule(UInt::new(10));
+            .add_rule(Keyword::new("def", Token::FnDecl))
+            .add_rule(Keyword::new("return", Token::Return))
+            .add_rule(Keyword::new("end", Token::End))
+            .add_rule(Keyword::new("(", Token::LParen))
+            .add_rule(Keyword::new(")", Token::RParen))
+            .add_rule(Keyword::new("+", Token::OpPlus))
+            .add_rule(Keyword::new("\n", Token::NewLine))
+            .add_rule(UInt::new(10));
 
         // TODO: This is a problem, picks up ff etc.
         //       Maybe add a prefix for it and make it HexUInt?
         // .add_rule(UInt::new(16));
         lexer.tokenize();
 
-        let target = vec![Token::FnDecl, Token::Identifier("foo".to_string()), Token::UInt(123)];
+        let foo = "foo".to_string();
+        let par = "parameter".to_string();
+
+        println!("");
+        println!("{:?}", lexer.tokens);
+        let target = vec![
+            Token::FnDecl, Token::Identifier(foo.clone()),
+            Token::LParen, Token::Identifier(par.clone()),
+            Token::RParen, Token::NewLine, Token::Return,
+            Token::Identifier(par.clone()),Token::OpPlus,
+            Token::UInt(3), Token::NewLine, Token::End,
+            Token::NewLine
+        ];
+        println!("{:?}", target);
+        println!("");
 
         assert_eq!(lexer.tokens, target);
     }
