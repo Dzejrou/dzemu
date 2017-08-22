@@ -230,8 +230,8 @@ mod test {
     #[test]
     fn tokens() {
         let mut lexer = Lexer::new("def foo");
-        let rule_fn = FnDecl::new();
-        let rule_id = Identifier::new(Vec::new());
+        let rule_fn = Keyword::new("def".to_string(), Token::FnDecl);
+        let rule_id = Identifier::new(vec!["def".to_string()]);
 
         assert_eq!(lexer.next(rule_fn), Some(Token::FnDecl));
 
@@ -240,7 +240,7 @@ mod test {
                    Some(Token::Identifier("foo".to_string())));
 
         lexer.skip(1);
-        let rule_fn = FnDecl::new();
+        let rule_fn = Keyword::new("def".to_string(), Token::FnDecl);
         assert_eq!(lexer.next(rule_fn), None);
     }
 
@@ -250,7 +250,7 @@ mod test {
         let keywords: Vec<String> = vec!["def".to_string()];
 
         lexer.add_rule(Identifier::new(keywords))
-             .add_rule(FnDecl::new())
+             .add_rule(Keyword::new("def".to_string(), Token::FnDecl))
              .add_rule(UInt::new(10));
 
         // TODO: This is a problem, picks up ff etc.

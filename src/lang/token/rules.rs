@@ -5,56 +5,48 @@ use lang::token::TokenRule;
 const BUFFER_CAPACITY: usize = 20;
 
 #[derive(Debug)]
-pub struct FnDecl {
-    buffer: String
+pub struct Keyword {
+    buffer:  String,
+    keyword: String,
+    token:   Token,
+    chars:   Vec<char>
 }
 
-impl FnDecl {
-    pub fn new() -> Box<TokenRule> {
-        Box::new(FnDecl {
-            buffer: String::with_capacity(BUFFER_CAPACITY)
+impl Keyword {
+    pub fn new(keyword: String, token: Token) -> Box<TokenRule> {
+        let chars: Vec<char> = keyword.chars().collect();
+
+        Box::new(Keyword {
+            buffer: String::with_capacity(BUFFER_CAPACITY),
+            keyword,
+            token,
+            chars
         })
     }
 }
 
-impl TokenRule for FnDecl {
+impl TokenRule for Keyword {
     fn push(&mut self, c: char) -> bool {
-        match self.buffer.len() {
-            0 => {
-                if c == 'd' {
-                    self.buffer.push(c);
-                    true
-                } else {
-                    false
-                }
+        if self.buffer.len() < self.chars.len() {
+            if c == self.chars[self.buffer.len()] {
+                self.buffer.push(c);
+                self.chars.push(c);
+                true
+            } else {
+                false
             }
-            1 => {
-                if c == 'e' {
-                    self.buffer.push(c);
-                    true
-                } else {
-                    false
-                }
-            }
-            2 => {
-                if c == 'f' {
-                    self.buffer.push(c);
-                    true
-                } else {
-                    false
-                }
-            }
-            _ => false
+        } else {
+            false
         }
     }
 
     fn valid(&self) -> bool {
-        self.buffer == "def"
+        self.buffer == self.keyword
     }
 
     fn get(&self) -> Option<Token> {
         if self.valid() {
-            Some(Token::FnDecl)
+            Some(self.token.clone())
         } else {
             None
         }
@@ -72,10 +64,10 @@ pub struct Identifier {
 }
 
 impl Identifier {
-    pub fn new(blist: Vec<String>) -> Box<TokenRule> {
+    pub fn new(blacklist: Vec<String>) -> Box<TokenRule> {
         Box::new(Identifier {
             buffer:    String::with_capacity(BUFFER_CAPACITY),
-            blacklist: blist
+            blacklist
         })
     }
 }

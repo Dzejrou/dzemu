@@ -1,6 +1,6 @@
 pub mod rules;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     FnDecl,
     Identifier(String),
