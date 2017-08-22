@@ -31,6 +31,10 @@ impl Lexer {
         self
     }
 
+    pub fn add_rules(&mut self, rules: &mut Vec<Box<TokenRule>>) {
+        self.rules.append(rules);
+    }
+
     pub fn add_str(&mut self, string: &str) {
         self.chars.append(&mut string.chars().collect());
     }
@@ -45,12 +49,10 @@ impl Lexer {
                 if !rule.push(c) {
                     // First invalid char.
                     if let Some(token) = rule.get() {
-                        println!("GOT TOKEN: {:?}", token);
                         token_found = true;
                         self.tokens.push(token);
                         break;
                     } else {
-                        println!("MISMATCH: {}", c);
                         rule.clear();
                     }
                 }
@@ -229,7 +231,7 @@ mod test {
     fn tokens() {
         let mut lexer = Lexer::new("def foo");
         let rule_fn = FnDecl::new();
-        let rule_id = Identifier::new();
+        let rule_id = Identifier::new(Vec::new());
 
         assert_eq!(lexer.next(rule_fn), Some(Token::FnDecl));
 
@@ -245,11 +247,14 @@ mod test {
     #[test]
     fn tokenize() {
         let mut lexer = Lexer::new("def foo 123");
-        lexer.add_rule(FnDecl::new())
-             .add_rule(Identifier::new())
+        let keywords: Vec<String> = vec!["def".to_string()];
+
+        lexer.add_rule(Identifier::new(keywords))
+             .add_rule(FnDecl::new())
              .add_rule(UInt::new(10));
 
         // TODO: This is a problem, picks up ff etc.
+        //       Maybe add a prefix for it and make it HexUInt?
         // .add_rule(UInt::new(16));
         lexer.tokenize();
 

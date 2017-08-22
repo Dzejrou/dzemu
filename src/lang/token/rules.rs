@@ -67,13 +67,15 @@ impl TokenRule for FnDecl {
 
 #[derive(Debug)]
 pub struct Identifier {
-    buffer: String
+    buffer:    String,
+    blacklist: Vec<String>
 }
 
 impl Identifier {
-    pub fn new() -> Box<TokenRule> {
+    pub fn new(blist: Vec<String>) -> Box<TokenRule> {
         Box::new(Identifier {
-            buffer: String::with_capacity(BUFFER_CAPACITY)
+            buffer:    String::with_capacity(BUFFER_CAPACITY),
+            blacklist: blist
         })
     }
 }
@@ -89,6 +91,7 @@ impl TokenRule for Identifier {
     }
 
     fn valid(&self) -> bool {
+        !self.blacklist.contains(&self.buffer) &&
         util::is_valid_identifier(&self.buffer, false)
     }
 
