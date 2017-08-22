@@ -1,4 +1,4 @@
-#DZEMU
+# DZEMU
 
 
 `dzemu` is an emulation/compilation library. Its goal
@@ -7,10 +7,10 @@ targeting these architectures.
 
 ## Current state:
  * Emulators:
-  * MCS6502
+	* MCS6502
  * Assemblers:
-  * MCS6502
+	* MCS6502
  * Disassemblers:
-  * MCS6502
+	* MCS6502
  * Compilers
-  * An extensible lexer
+	* An extensible lexer
